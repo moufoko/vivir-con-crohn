@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Vivir con Crohn · Juego educativo 16-bit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --c-bg1:#1a1c2c; --c-bg2:#3b2c5a;
+    --c-panel:#41394e; --c-panel2:#2b2640;
+    --c-frame:#f4f4f4; --c-frame-dark:#94a1b2;
+    --c-good:#38b764; --c-good2:#a7f070;
+    --c-warn:#ffcd75; --c-bad:#ef476f; --c-bad2:#b13e53;
+    --c-blue:#41a6f6; --c-blue2:#3978a8;
+    --c-text:#fffce8; --c-ink:#1a1c2c;
+    --c-purple:#a36bf0; --c-pink:#ff77a8; --c-cdai:#ff5470;
+    --font:"Press Start 2P", "Courier New", monospace;
+  }
+  *{box-sizing:border-box; -webkit-font-smoothing:none; image-rendering:pixelated;}
+  html,body{margin:0; padding:0; height:100%;}
+  body{
+    font-family:var(--font);
+    background:
+      radial-gradient(circle at 20% 10%, #5d3a9b33, transparent 50%),
+      radial-gradient(circle at 80% 90%, #38b76433, transparent 50%),
+      linear-gradient(160deg,var(--c-bg1),var(--c-bg2));
+    color:var(--c-text);
+    display:flex; align-items:center; justify-content:center;
+    min-height:100vh; padding:14px;
+  }
+  /* ---- SNES screen frame ---- */
+  #console{
+    width:min(900px,100%);
+  }
+  #screen{
+    position:relative;
+    background:#11121e;
+    border:6px solid var(--c-frame);
+    border-radius:10px;
+    box-shadow:0 0 0 6px #2b2640, 0 14px 0 6px #00000066, 0 0 40px #00000099;
+    overflow:hidden;
+    aspect-ratio:4/3;
+    min-height:480px;
+  }
+  .scanlines:after{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:repeating-linear-gradient(0deg,#0000 0 2px,#00000022 2px 3px);
+    mix-blend-mode:multiply; z-index:50;
+  }
+  .view{position:absolute; inset:0; display:flex; flex-direction:column;}
+  /* ---- typography helpers ---- */
+  .px{font-family:var(--font);}
+  h1,h2,h3{margin:0; line-height:1.5; text-shadow:2px 2px 0 #00000088;}
+  p{line-height:1.7;}
+  .tiny{font-size:8px;}
+  .small{font-size:9px;}
+  .mid{font-size:11px;}
+  .big{font-size:15px;}
+  /* ---- HUD ---- */
+  #hud{
+    display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center;
+    padding:8px 10px; background:linear-gradient(#2b2640,#221d33);
+    border-bottom:3px solid #11121e; font-size:8px;
+  }
+  #hud .wk{color:var(--c-warn); white-space:nowrap;}
+  #hud .ap{color:var(--c-good2); white-space:nowrap;}
+  #hud .phase{margin-left:auto; padding:3px 6px; border-radius:4px; white-space:nowrap;}
+  .ph-rem{background:var(--c-good); color:#06321a;}
+  .ph-leve{background:var(--c-warn); color:#5a3d00;}
+  .ph-mod{background:#ff924c; color:#4a1d00;}
+  .ph-grave{background:var(--c-bad); color:#3a0010;}
+  /* ---- stat bars ---- */
+  #bars{display:grid; grid-template-columns:1fr 1fr; gap:5px 12px; padding:8px 10px; background:#1d1a2e;}
+  .bar{display:flex; align-items:center; gap:6px; font-size:8px;}
+  .bar .lbl{width:74px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .bar .track{flex:1; height:12px; background:#0d0d16; border:2px solid #000; border-radius:3px; overflow:hidden; position:relative;}
+  .bar .fill{height:100%; width:50%; transition:width .35s ease;}
+  .bar .num{width:34px; text-align:right; font-size:8px;}
+  /* ---- main stage ---- */
+  #stage{flex:1; display:flex; flex-direction:column; min-height:0;}
+  #scene{
+    flex:1; display:flex; align-items:center; justify-content:center; gap:14px;
+    position:relative; overflow:hidden; min-height:90px;
+    transition:background .5s;
+  }
+  .scene-spring{background:linear-gradient(#bde6ff,#dff7c8 70%,#8fd96a);}
+  .scene-summer{background:linear-gradient(#ffe9a8,#ffd36b 70%,#7bd06b);}
+  .scene-autumn{background:linear-gradient(#ffd9a0,#ffae6b 70%,#c98b46);}
+  .scene-winter{background:linear-gradient(#cfe9ff,#eef6ff 70%,#bcd3e6);}
+  .scene-flare{background:linear-gradient(#ffd0d0,#ff9a9a 70%,#e06060)!important; animation:flarepulse 1.2s infinite alternate;}
+  @keyframes flarepulse{from{filter:brightness(1);}to{filter:brightness(1.12);}}
+  .sprite{font-size:62px; filter:drop-shadow(3px 4px 0 #00000044); animation:bob 1.6s infinite ease-in-out;}
+  @keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-7px);}}
+  .deco{font-size:34px; opacity:.9; animation:bob 2.4s infinite ease-in-out;}
+  /* ---- text/dialog box ---- */
+  #box{
+    background:#15131f; border-top:4px solid var(--c-frame);
+    padding:11px 13px; min-height:120px; max-height:48%; overflow:auto;
+  }
+  #box .speaker{color:var(--c-warn); font-size:9px; margin-bottom:7px;}
+  #box .text{font-size:10px; line-height:1.85;}
+  #box .text b{color:var(--c-good2);}
+  #box .text .bad{color:var(--c-pink);}
+  #box .text .info{color:var(--c-blue);}
+  /* ---- menu / buttons ---- */
+  #menu{padding:9px 11px; display:flex; flex-wrap:wrap; gap:7px; background:#11121e; border-top:3px solid #2b2640;}
+  button.btn{
+    font-family:var(--font); font-size:9px; cursor:pointer;
+    color:var(--c-text); background:linear-gradient(#4b4368,#332c4d);
+    border:none; border-radius:5px; padding:9px 11px;
+    box-shadow:0 4px 0 #1a1626, inset 0 2px 0 #ffffff22;
+    transition:transform .05s, box-shadow .05s; text-align:left; line-height:1.4;
+    touch-action:manipulation; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent;
+  }
+  button.btn:hover{filter:brightness(1.12);}
+  button.btn:active{transform:translateY(3px); box-shadow:0 1px 0 #1a1626;}
+  button.btn:disabled{opacity:.4; cursor:not-allowed; box-shadow:0 4px 0 #1a1626;}
+  button.btn .cost{color:var(--c-good2); font-size:7px;}
+  button.btn.k{flex:1 1 46%;}
+  button.btn.primary{background:linear-gradient(#46c46a,#2c9850); box-shadow:0 4px 0 #14401f, inset 0 2px 0 #ffffff33;}
+  button.btn.danger{background:linear-gradient(#ff6b8b,#c93a5a); box-shadow:0 4px 0 #4a0d1c, inset 0 2px 0 #ffffff33;}
+  button.btn.blue{background:linear-gradient(#5bb6ff,#357fc0); box-shadow:0 4px 0 #143a5a, inset 0 2px 0 #ffffff33;}
+  button.btn.wide{flex:1 1 100%; text-align:center;}
+  /* ---- title screen ---- */
+  .center{align-items:center; justify-content:center; text-align:center; gap:16px; padding:22px;}
+  .logo{font-size:26px; color:var(--c-good2); text-shadow:3px 3px 0 var(--c-bad2),6px 6px 0 #00000066; line-height:1.4;}
+  .logo small{display:block; font-size:11px; color:var(--c-warn); margin-top:10px; text-shadow:2px 2px 0 #000;}
+  .blink{animation:blink 1s steps(1) infinite;}
+  @keyframes blink{50%{opacity:0;}}
+  /* ---- edu card ---- */
+  .card{background:linear-gradient(#2a2440,#1d1830); border:4px solid var(--c-warn); border-radius:8px; margin:auto; padding:16px; max-width:90%;}
+  .card h2{color:var(--c-warn); font-size:13px; margin-bottom:12px;}
+  .card .text{font-size:10px; line-height:1.9;}
+  .card .src{margin-top:12px; font-size:7px; color:var(--c-frame-dark);}
+  .badge{display:inline-block; background:var(--c-good); color:#06321a; font-size:8px; padding:3px 6px; border-radius:4px; margin:3px 4px 0 0;}
+  .badge.miss{background:#3a3550; color:#777;}
+  /* food cards */
+  .foods{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; padding:6px 0;}
+  .foodcard{flex:1 1 28%; min-width:120px; background:#241f38; border:3px solid #4b4368; border-radius:6px; padding:8px; text-align:center; cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent;}
+  .foodcard:hover{border-color:var(--c-warn); transform:translateY(-2px);}
+  .foodcard .e{font-size:32px;}
+  .foodcard .n{font-size:9px; margin-top:5px; line-height:1.4;}
+  /* misc */
+  .row{display:flex; gap:8px; flex-wrap:wrap; justify-content:center;}
+  .float{position:absolute; font-size:11px; font-family:var(--font); pointer-events:none; animation:floatup 1s ease-out forwards; z-index:60; text-shadow:1px 1px 0 #000;}
+  @keyframes floatup{from{transform:translateY(0); opacity:1;}to{transform:translateY(-40px); opacity:0;}}
+  #sub{font-size:8px; color:var(--c-frame-dark); text-align:center; margin-top:8px;}
+  .toprow{display:flex; gap:8px; align-items:center; justify-content:center; margin-top:6px;}
+  .iconbtn{font-family:var(--font); font-size:8px; cursor:pointer; background:#2b2640; color:var(--c-text); border:2px solid #4b4368; border-radius:5px; padding:5px 7px;}
+  .iconbtn:hover{border-color:var(--c-warn);}
+  table.summary{font-size:9px; border-collapse:collapse; margin:8px auto;}
+  table.summary td{padding:4px 9px; border-bottom:1px solid #4b4368;}
+  table.summary td:last-child{color:var(--c-good2); text-align:right;}
+
+  /* =========================================================
+     MÓVIL / TABLET — pantalla a altura completa y controles grandes
+     ========================================================= */
+  @media (max-width:640px), (pointer:coarse){
+    body{padding:0; align-items:stretch; min-height:100vh;}
+    #console{width:100%;}
+    #screen{
+      aspect-ratio:auto;
+      height:calc(100vh - 58px);
+      height:calc(100dvh - 58px);
+      min-height:0;
+      border-width:4px; border-radius:0;
+      box-shadow:none;
+    }
+    /* HUD y barras un poco más legibles: una sola columna, sin cortar texto */
+    #hud{font-size:9px; padding:9px 10px;}
+    #bars{padding:9px 10px; gap:7px; grid-template-columns:1fr;}
+    .bar{font-size:9px;}
+    .bar .lbl{width:128px; overflow:visible; text-overflow:clip;}
+    .bar .track{height:14px;}
+    .bar .num{width:42px;}
+    /* texto de diálogo */
+    #box{padding:12px 13px;}
+    #box .speaker{font-size:11px;}
+    #box .text{font-size:12px; line-height:1.85;}
+    .card .text{font-size:12px;}
+    .card h2{font-size:13px;}
+    /* BOTONES grandes para el dedo */
+    button.btn{font-size:12px; padding:14px 12px; box-shadow:0 5px 0 #1a1626, inset 0 2px 0 #ffffff22;}
+    button.btn:active{transform:translateY(4px); box-shadow:0 1px 0 #1a1626;}
+    button.btn .cost{font-size:9px;}
+    button.btn.k{flex:1 1 100%;}            /* una acción por fila: objetivo táctil amplio */
+    #menu{gap:8px; padding:10px;}
+    .iconbtn{font-size:10px; padding:8px 10px;}
+    /* tarjetas de comida apiladas y anchas */
+    .foods{flex-direction:column;}
+    .foodcard{flex:1 1 100%; min-width:0; display:flex; align-items:center; gap:12px; text-align:left; padding:11px;}
+    .foodcard .e{font-size:30px;}
+    .foodcard .n{font-size:12px; margin-top:0;}
+    /* escena compacta: no debe comerse toda la pantalla en móvil */
+    #scene{flex:0 0 auto; height:128px; min-height:0; max-height:30vh;}
+    .sprite{font-size:50px;}
+    .deco{font-size:28px;}
+    .logo{font-size:20px;}
+    .logo small{font-size:9px;}
+    #sub{display:none;}
+  }
+  /* Pantallas muy estrechas (móviles pequeños): dos acciones por fila para no scrollear tanto */
+  @media (max-width:640px) and (min-height:680px){
+    button.btn.k{flex:1 1 46%;}
+  }
+</style>
+</head>
+<body>
+<div id="console">
+  <div id="screen" class="scanlines"><div id="game" class="view"></div></div>
+  <div class="toprow">
+    <button class="iconbtn" id="muteBtn" onclick="toggleMusic()">🔊 Música: OFF</button>
+    <button class="iconbtn" onclick="if(confirm('¿Reiniciar el juego?'))location.reload()">↻ Reiniciar</button>
+  </div>
+  <div id="sub">Juego educativo · Basado en datos reales de los libros del proyecto · No sustituye consejo médico.</div>
+</div>
+
+<script>
+/* =========================================================================
+   VIVIR CON CROHN — Simulador educativo 16-bit
+   Datos reales: tabla de alimentos (Dr. García Sieiro), síntomas/diagnóstico/
+   tratamiento (Dr. Monés Xiol), enfoque familia/estrés (Jaureguizar & Espina).
+   ========================================================================= */
+
+const G = document.getElementById('game');
+
+/* ---------- ESTADO ---------- */
+let S = {};
+function newState(){
+  S = {
+    week:1, maxWeeks:52,
+    ap:3, apMax:3,
+    cdai:90,                 // <150 remisión, 150-250 leve, 251-350 mod, >350 grave
+    energia:78, nutricion:75, estres:30, dinero:55,
+    tookMed:false, missedStreak:0,
+    smoked:false, smokeFreeAllYear:true,
+    flare:false, wasFlare:false,
+    weeksRemission:0, weeksFlare:0,
+    medWeeks:0, goodMeals:0, badMeals:0,
+    hospital:0,
+    phase:'title',
+    eduSeen:{},
+    log:[]
+  };
+}
+
+/* ---------- AUDIO (chiptune simple) ---------- */
+let audioCtx=null, musicOn=false, musicTimer=null, noteIdx=0;
+const melody=[ // notas (Hz) tipo chiptune alegre
+  392,440,523,440,392,330,392,0,
+  349,392,440,392,349,294,330,0,
+  392,440,523,587,523,440,392,0,
+  330,392,330,294,262,294,330,0
+];
+function ensureAudio(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }
+function blip(freq,dur,type){ if(!audioCtx) return;
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type=type||'square'; o.frequency.value=freq;
+  g.gain.value=0.0; o.connect(g); g.connect(audioCtx.destination);
+  const t=audioCtx.currentTime;
+  g.gain.linearRampToValueAtTime(0.10, t+0.01);
+  g.gain.exponentialRampToValueAtTime(0.001, t+dur);
+  o.start(t); o.stop(t+dur);
+}
+function sfx(kind){ if(!audioCtx||!musicOn&&kind!=='force'){} ensureAudio();
+  if(kind==='ok') blip(660,0.08); else if(kind==='good'){blip(660,0.07);setTimeout(()=>blip(880,0.09),70);}
+  else if(kind==='bad'){blip(220,0.18,'sawtooth');} else if(kind==='click') blip(440,0.05);
+}
+function playMusic(){
+  if(!musicOn) return; ensureAudio();
+  const n=melody[noteIdx%melody.length];
+  if(n>0){ blip(n,0.14,'square'); blip(n/2,0.14,'triangle'); }
+  noteIdx++;
+  musicTimer=setTimeout(playMusic,180);
+}
+function toggleMusic(){
+  musicOn=!musicOn; ensureAudio();
+  document.getElementById('muteBtn').textContent = musicOn? '🔊 Música: ON':'🔊 Música: OFF';
+  if(musicOn) playMusic(); else { clearTimeout(musicTimer); }
+}
+
+/* ---------- DATOS REALES: ALIMENTOS (tabla del libro de dieta) ---------- */
+const FOODS=[
+  // cat: good / test / bad
+  {n:'Arroz blanco',e:'🍚',cat:'good'},
+  {n:'Pasta',e:'🍝',cat:'good'},
+  {n:'Patata cocida',e:'🥔',cat:'good'},
+  {n:'Pan tostado',e:'🍞',cat:'good'},
+  {n:'Plátano',e:'🍌',cat:'good'},
+  {n:'Manzana',e:'🍎',cat:'good'},
+  {n:'Pera',e:'🍐',cat:'good'},
+  {n:'Merluza a la plancha',e:'🐟',cat:'good'},
+  {n:'Pollo a la plancha',e:'🍗',cat:'good'},
+  {n:'Ternera',e:'🥩',cat:'good'},
+  {n:'Jamón cocido',e:'🍖',cat:'good'},
+  {n:'Yogur',e:'🥛',cat:'good'},
+  {n:'Zanahoria cocida',e:'🥕',cat:'good'},
+  {n:'Tortilla francesa',e:'🍳',cat:'good'},
+  {n:'Membrillo',e:'🟧',cat:'good'},
+  {n:'Manzanilla',e:'🍵',cat:'good'},
+
+  {n:'Lentejas',e:'🍲',cat:'test'},
+  {n:'Garbanzos',e:'🫘',cat:'test'},
+  {n:'Naranja',e:'🍊',cat:'test'},
+  {n:'Cebolla',e:'🧅',cat:'test'},
+  {n:'Coliflor',e:'🥦',cat:'test'},
+  {n:'Pan integral',e:'🥖',cat:'test'},
+  {n:'Gambas',e:'🦐',cat:'test'},
+  {n:'Bacalao',e:'🐠',cat:'test'},
+  {n:'Almendras',e:'🌰',cat:'test'},
+  {n:'Leche desnatada',e:'🥛',cat:'test'},
+
+  {n:'Fritos / Rebozados',e:'🍟',cat:'bad'},
+  {n:'Chorizo / Embutido',e:'🌭',cat:'bad'},
+  {n:'Tocino / Cerdo graso',e:'🥓',cat:'bad'},
+  {n:'Comida picante',e:'🌶️',cat:'bad'},
+  {n:'Café',e:'☕',cat:'bad'},
+  {n:'Chocolate',e:'🍫',cat:'bad'},
+  {n:'Cerveza / Alcohol',e:'🍺',cat:'bad'},
+  {n:'Leche entera',e:'🥛',cat:'bad'},
+  {n:'Helado / Nata',e:'🍦',cat:'bad'},
+  {n:'Coles',e:'🥬',cat:'bad'}
+];
+function pick(arr,n){ const c=[...arr]; const out=[]; while(out.length<n&&c.length){ out.push(c.splice(Math.floor(Math.random()*c.length),1)[0]); } return out; }
+
+/* ---------- FICHAS EDUCATIVAS (datos reales de los libros) ---------- */
+const EDU={
+  intro:{t:'¿Qué es la enfermedad de Crohn?',
+    body:`La enfermedad de Crohn es una <b>enfermedad inflamatoria intestinal crónica</b>. Provoca inflamación y úlceras en el tubo digestivo, sobre todo en la parte final del intestino delgado (<b>íleon terminal</b>) y el colon.<br><br>
+    Localización real: <b>30%</b> sólo intestino delgado · <b>50%</b> delgado + colon · <b>20%</b> sólo colon.<br><br>
+    Es de causa <span class="info">autoinmune</span> (las defensas del cuerpo se "equivocan") y <span class="info">no es contagiosa</span>. Evoluciona a <b>brotes</b>: periodos con síntomas y periodos de calma (remisión).`,
+    src:'Fuente: Dr. Joan Monés Xiol — "Síntomas y enfermedades del intestino"'},
+  cdai:{t:'El índice CDAI (actividad)',
+    body:`Los médicos miden la actividad de la enfermedad con el <b>CDAI</b> (Crohn's Disease Activity Index): nº de deposiciones, dolor, fiebre, anemia...<br><br>
+    <b>&lt;150</b> = enfermedad inactiva (remisión) ✅<br>
+    <span class="info">150–250</span> = brote leve<br>
+    <span class="bad">251–350</span> = brote moderado<br>
+    <span class="bad">&gt;350</span> = brote grave<br><br>
+    En el juego, ¡tu objetivo es mantener el CDAI por debajo de 150!`,
+    src:'Fuente: Dr. Monés Xiol — índice CDAI'},
+  flare:{t:'¡Estás en brote!',
+    body:`Un <b>brote</b> es un periodo de actividad de la enfermedad: dolor abdominal, diarrea, cansancio, a veces fiebre y sangre en heces.<br><br>
+    Qué ayuda a controlarlo:<br>
+    💊 <b>No abandonar la medicación</b><br>
+    🍚 <b>Dieta suave</b> (baja en residuos): evita fritos, fibra dura, picante, alcohol y lácteos enteros.<br>
+    😴 <b>Descanso</b> y reducir el estrés.<br><br>
+    El brote es parte normal de la enfermedad: con tratamiento se controla y vuelve la calma.`,
+    src:'Fuente: Dr. Monés Xiol / libro de dieta'},
+  tabaco:{t:'Tabaco y Crohn',
+    body:`Dato importante y real: <span class="bad">el tabaco PERJUDICA la evolución de la enfermedad de Crohn</span>.<br><br>
+    Fumar aumenta los brotes, las complicaciones y la necesidad de cirugía.<br><br>
+    👉 Dejar de fumar es una de las mejores decisiones para alguien con Crohn.`,
+    src:'Fuente: Dr. Monés Xiol'},
+  diet:{t:'La dieta en el Crohn',
+    body:`No existe una dieta única: debe ser <b>individualizada</b>. Consejos reales del libro:<br><br>
+    • Haz <b>5–6 comidas pequeñas</b> al día, mastica bien y come con calma.<br>
+    • Si un alimento no te sienta mal, no hace falta eliminarlo.<br>
+    • Las molestias por un alimento suelen aparecer <b>a las ~6 horas</b>.<br>
+    • En <b>brote</b> tolerarás menos cosas que en remisión.<br>
+    • Prueba los alimentos nuevos en pequeña cantidad.`,
+    src:'Fuente: Dr. R. García Sieiro — "Dieta para la Colitis Ulcerosa y/o Enfermedad de Crohn"'},
+  meds:{t:'Los tratamientos',
+    body:`Fármacos reales usados en el Crohn (siempre con receta médica):<br><br>
+    • <b>Salicilatos</b>: mesalazina (Pentasa®, Claversal®).<br>
+    • <b>Corticoides</b>: para controlar el brote.<br>
+    • <b>Inmunosupresores</b>: azatioprina (Imurel®).<br>
+    • <b>Biológicos anti-TNF</b>: en casos más activos.<br><br>
+    ⚠️ <span class="bad">Cuidado con los AINEs</span> (ibuprofeno): pueden empeorar la enfermedad. Mejor paracetamol para el dolor.<br>
+    La <b>adherencia</b> (tomar la medicación aunque te sientas bien) es clave.`,
+    src:'Fuente: Dr. Monés Xiol'},
+  family:{t:'Familia, estrés y ánimo',
+    body:`El Crohn no es sólo físico. El <b>estrés</b> y el estado de ánimo influyen en cómo te sientes y pueden favorecer los brotes.<br><br>
+    • Apóyate en tu <b>familia y amigos</b>.<br>
+    • Comparte cómo te sientes; no te aísles.<br>
+    • Cuida el descanso y busca momentos de calma.<br><br>
+    La enfermedad es crónica, pero <b>se puede vivir bien con ella</b>.`,
+    src:'Fuente: Jaureguizar & Espina — "Enfermedad física crónica y familia"'}
+};
+
+/* ---------- UTILIDADES ---------- */
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function phaseInfo(){
+  const c=S.cdai;
+  if(c<150) return {key:'rem',label:'REMISIÓN',cls:'ph-rem'};
+  if(c<=250) return {key:'leve',label:'BROTE LEVE',cls:'ph-leve'};
+  if(c<=350) return {key:'mod',label:'BROTE MODERADO',cls:'ph-mod'};
+  return {key:'grave',label:'BROTE GRAVE',cls:'ph-grave'};
+}
+function season(){
+  const w=S.week;
+  if(w<=13) return {cls:'scene-winter',name:'Invierno',deco:['❄️','⛄']};
+  if(w<=26) return {cls:'scene-spring',name:'Primavera',deco:['🌷','🦋']};
+  if(w<=39) return {cls:'scene-summer',name:'Verano',deco:['☀️','🌻']};
+  return {cls:'scene-autumn',name:'Otoño',deco:['🍂','🍁']};
+}
+function moodSprite(){
+  if(S.flare) return '🤒';
+  if(S.energia<35||S.estres>70) return '😟';
+  if(S.energia>70&&S.estres<35) return '😄';
+  return '🙂';
+}
+function floatTxt(t,color){
+  const sc=document.getElementById('scene'); if(!sc) return;
+  const el=document.createElement('div'); el.className='float'; el.textContent=t;
+  el.style.color=color||'#fff'; el.style.left=(30+Math.random()*40)+'%'; el.style.top='40%';
+  sc.appendChild(el); setTimeout(()=>el.remove(),1000);
+}
+
+/* ---------- RENDER PRINCIPAL ---------- */
+function render(html){ G.innerHTML=html; }
+
+function hudHTML(){
+  const ph=phaseInfo();
+  return `<div id="hud">
+    <span class="wk">📅 Semana ${S.week}/${S.maxWeeks} · ${season().name}</span>
+    <span class="ap">⭐ Acciones: ${'●'.repeat(S.ap)}${'○'.repeat(S.apMax-S.ap)}</span>
+    <span class="phase ${ph.cls}">${ph.label} · CDAI ${Math.round(S.cdai)}</span>
+  </div>
+  <div id="bars">
+    ${barHTML('🔥 Inflamación',inflamPct(),inflamColor(),Math.round(S.cdai),true)}
+    ${barHTML('⚡ Energía',S.energia,colScale(S.energia))}
+    ${barHTML('🥗 Nutrición',S.nutricion,colScale(S.nutricion))}
+    ${barHTML('😰 Estrés',S.estres,colScaleInv(S.estres))}
+    ${barHTML('💰 Dinero',clamp(S.dinero,0,100),'var(--c-warn)',S.dinero+'€')}
+  </div>`;
+}
+function inflamPct(){ return clamp(S.cdai/450*100,0,100); }
+function inflamColor(){ return S.cdai<150?'var(--c-good)':S.cdai<=250?'var(--c-warn)':S.cdai<=350?'#ff924c':'var(--c-bad)'; }
+function colScale(v){ return v>60?'var(--c-good)':v>30?'var(--c-warn)':'var(--c-bad)'; }
+function colScaleInv(v){ return v<35?'var(--c-good)':v<65?'var(--c-warn)':'var(--c-bad)'; }
+function barHTML(lbl,pct,color,num,isCdai){
+  return `<div class="bar"><span class="lbl">${lbl}</span>
+    <span class="track"><span class="fill" style="width:${pct}%;background:${color}"></span></span>
+    <span class="num">${num!==undefined?num:Math.round(pct)}</span></div>`;
+}
+
+/* ---------- PANTALLA: TÍTULO ---------- */
+function showTitle(){
+  S.phase='title';
+  render(`<div class="view center">
+    <div class="logo">VIVIR<br>CON CROHN<small>Un año de tu vida · estrategia 16-bit</small></div>
+    <div class="sprite" style="font-size:70px">🦸</div>
+    <div class="small blink" style="color:var(--c-good2)">▶ PULSA PARA EMPEZAR</div>
+    <div class="row" style="margin-top:6px">
+      <button class="btn primary" onclick="startGame()">🎮 NUEVA PARTIDA</button>
+      <button class="btn blue" onclick="howTo()">❓ CÓMO SE JUEGA</button>
+    </div>
+    <div class="tiny" style="color:var(--c-frame-dark);max-width:80%">Acompaña a Álex durante 52 semanas. Toma buenas decisiones para mantener la enfermedad en calma. Basado en datos médicos reales.</div>
+  </div>`);
+}
+function howTo(){
+  sfx('click');
+  render(`<div class="view"><div id="box" style="max-height:none;flex:1">
+    <div class="speaker">❓ CÓMO SE JUEGA</div>
+    <div class="text">
+    🎯 <b>Objetivo:</b> llegar a la semana 52 con la enfermedad en <b>remisión</b> (CDAI &lt; 150) y buena calidad de vida.<br><br>
+    📅 Cada semana tienes <b>3 acciones (⭐)</b>. Elige bien: descansar, medicarte, ver a la familia, trabajar...<br><br>
+    🍽️ Cada semana <b>eliges qué comer</b> usando la tabla de alimentos real.<br><br>
+    💊 <b>Toma tu medicación</b> aunque te sientas bien (adherencia).<br><br>
+    ⚠️ Vigila: tabaco, AINEs (ibuprofeno), estrés y mala dieta pueden provocar un <span class="bad">brote</span>.<br><br>
+    📖 Entre semanas aprenderás datos reales sobre el Crohn.
+    </div></div>
+    <div id="menu"><button class="btn primary wide" onclick="showTitle()">◀ Volver</button></div>
+  </div>`);
+}
+
+function startGame(){
+  ensureAudio(); newState();
+  showEdu('intro', ()=>showEdu('cdai', ()=>startWeek()));
+}
+
+/* ---------- FICHA EDUCATIVA ---------- */
+function showEdu(key, next){
+  sfx('click'); S.eduSeen[key]=true;
+  const e=EDU[key];
+  render(`<div class="view">
+    <div id="box" style="max-height:none;flex:1;display:flex">
+      <div class="card">
+        <h2>📖 ${e.t}</h2>
+        <div class="text">${e.body}</div>
+        <div class="src">${e.src}</div>
+      </div>
+    </div>
+    <div id="menu"><button class="btn primary wide" onclick="(${'window.__next'})()">CONTINUAR ▶</button></div>
+  </div>`);
+  window.__next = next;
+}
+
+/* ---------- INICIO DE SEMANA ---------- */
+function startWeek(){
+  S.ap=S.apMax; S.tookMed=false; S.phase='meal';
+  // fichas educativas en momentos clave
+  const triggers={13:'diet',26:'family',39:'meds'};
+  if(triggers[S.week] && !S.eduSeen['wk'+S.week]){
+    S.eduSeen['wk'+S.week]=true;
+    return showEdu(triggers[S.week], ()=>mealPhase());
+  }
+  mealPhase();
+}
+
+/* ---------- FASE COMIDA ---------- */
+function mealPhase(){
+  S.phase='meal';
+  // en brote, más probabilidad de ofrecer alimentos "malos" como tentación
+  const options=pick(FOODS,3);
+  const cards=options.map((f,i)=>`
+    <div class="foodcard" onclick="eat(${i})">
+      <div class="e">${f.e}</div><div class="n">${f.n}</div>
+    </div>`).join('');
+  window.__meal=options;
+  const ph=phaseInfo();
+  const tip = S.flare
+    ? '<span class="bad">⚠️ Estás en brote: elige alimentos suaves y evita fritos, fibra dura, picante y alcohol.</span>'
+    : 'Elige bien: en remisión puedes comer variado, pero lo que sabes que te sienta mal, mejor evitarlo.';
+  render(`<div class="view">
+    ${hudHTML()}
+    <div id="stage">
+      <div id="scene" class="${S.flare?'scene-flare':season().cls}">
+        <span class="deco">${season().deco[0]}</span>
+        <span class="sprite">${moodSprite()}</span>
+        <span class="deco">🍽️</span>
+      </div>
+      <div id="box">
+        <div class="speaker">🍽️ MENÚ DE LA SEMANA</div>
+        <div class="text">${tip}<br><br>¿Qué eliges comer hoy?</div>
+        <div class="foods">${cards}</div>
+      </div>
+    </div>
+  </div>`);
+}
+function eat(i){
+  const f=window.__meal[i];
+  let msg, sound;
+  if(f.cat==='good'){
+    S.nutricion=clamp(S.nutricion+8,0,100); S.energia=clamp(S.energia+3,0,100); S.cdai=clamp(S.cdai-4,0,450);
+    S.goodMeals++; sound='good';
+    msg=`<b>¡Buena elección!</b> ${f.n} ${f.e} suele tolerarse bien. Nutrición ▲, inflamación ▼.`;
+    floatTxt('+Nutrición','#a7f070');
+  } else if(f.cat==='test'){
+    const badLuck = Math.random() < (S.flare?0.7:0.4);
+    if(badLuck){
+      S.cdai=clamp(S.cdai+6,0,450); S.energia=clamp(S.energia-3,0,100); S.estres=clamp(S.estres+3,0,100);
+      S.badMeals++; sound='bad';
+      msg=`${f.n} ${f.e} es de "probar tolerancia"... <span class="bad">esta vez te sentó mal</span>. Recuerda: pruébalos en pequeña cantidad. Inflamación ▲.`;
+      floatTxt('Sentó mal','#ff77a8');
+    } else {
+      S.nutricion=clamp(S.nutricion+5,0,100); S.goodMeals++; sound='ok';
+      msg=`${f.n} ${f.e} es de "probar tolerancia" y <b>hoy te sentó bien</b>. Nutrición ▲.`;
+      floatTxt('+Nutrición','#a7f070');
+    }
+  } else { // bad
+    const hit=S.flare?16:9;
+    S.cdai=clamp(S.cdai+hit,0,450); S.energia=clamp(S.energia-4,0,100); S.estres=clamp(S.estres+2,0,100);
+    S.nutricion=clamp(S.nutricion+1,0,100); S.badMeals++; sound='bad';
+    msg=`${f.n} ${f.e} estaba rico... pero <span class="bad">suele sentar mal</span> en el Crohn (graso/irritante). Inflamación ▲▲${S.flare?' (¡y estás en brote!)':''}.`;
+    floatTxt('Inflamación +','#ef476f');
+  }
+  sfx(sound);
+  showBox('🍽️ Has comido', msg, [{t:'CONTINUAR ▶',cls:'primary',fn:'actionPhase()'}]);
+}
+
+/* ---------- FASE ACCIONES ---------- */
+function actionPhase(){
+  S.phase='actions';
+  const dis = S.ap<=0;
+  const medDone = S.tookMed;
+  render(`<div class="view">
+    ${hudHTML()}
+    <div id="stage">
+      <div id="scene" class="${S.flare?'scene-flare':season().cls}">
+        <span class="deco">${season().deco[1]}</span>
+        <span class="sprite">${moodSprite()}</span>
+        <span class="deco">🏠</span>
+      </div>
+      <div id="box">
+        <div class="speaker">⭐ TUS ACCIONES (${S.ap} restantes)</div>
+        <div class="text">${flareAdvice()}</div>
+      </div>
+    </div>
+    <div id="menu">
+      <button class="btn k ${medDone?'':'primary'}" onclick="act('med')" ${dis||medDone?'disabled':''}>💊 Tomar medicación<br><span class="cost">${medDone?'(hecho ✔)':'-5€ · CDAI▼ · clave'}</span></button>
+      <button class="btn k blue" onclick="act('rest')" ${dis?'disabled':''}>😴 Descansar<br><span class="cost">Energía▲ Estrés▼</span></button>
+      <button class="btn k" onclick="act('exercise')" ${dis?'disabled':''}>🏃 Ejercicio suave<br><span class="cost">Energía▲ Estrés▼</span></button>
+      <button class="btn k" onclick="act('family')" ${dis?'disabled':''}>👨‍👩‍👧 Familia/amigos<br><span class="cost">Estrés▼▼ Ánimo▲</span></button>
+      <button class="btn k" onclick="act('work')" ${dis?'disabled':''}>💼 Trabajar<br><span class="cost">+18€ · Estrés▲</span></button>
+      <button class="btn k blue" onclick="act('doctor')" ${dis?'disabled':''}>🏥 Ir al médico<br><span class="cost">Revisión · consejo</span></button>
+      <button class="btn wide primary" onclick="endWeek()">✅ Terminar la semana ▶</button>
+    </div>
+  </div>`);
+}
+function flareAdvice(){
+  if(S.flare) return '<span class="bad">Estás en brote.</span> Prioriza 💊 medicación y 😴 descanso para bajar el CDAI por debajo de 150.';
+  if(!S.tookMed) return 'Consejo: <b>toma tu medicación</b> aunque te sientas bien (adherencia). Reparte tus 3 acciones con cabeza.';
+  if(S.dinero<10) return 'Vas justo de dinero 💰. Quizá toca <b>trabajar</b> esta semana.';
+  return 'Vas bien. Cuida tu energía, tu ánimo y tu economía. ¿En qué inviertes la semana?';
+}
+function act(kind){
+  if(S.ap<=0) return;
+  let msg='';
+  if(kind==='med'){
+    if(S.dinero<5){ sfx('bad'); return showBox('💊 Sin dinero','No te llega para la medicación esta semana (-5€). Necesitas <b>trabajar</b> primero. Saltarse el tratamiento es arriesgado.',[{t:'◀ Volver',cls:'primary',fn:'actionPhase()'}]); }
+    S.tookMed=true; S.dinero-=5; S.cdai=clamp(S.cdai-(S.flare?16:9),0,450); S.medWeeks++; S.missedStreak=0;
+    msg='Has tomado tu medicación 💊. La inflamación baja. <b>La constancia es lo que mantiene la remisión.</b>';
+    floatTxt('CDAI ▼','#41a6f6'); sfx('good');
+  } else if(kind==='rest'){
+    S.energia=clamp(S.energia+13,0,100); S.estres=clamp(S.estres-13,0,100); S.cdai=clamp(S.cdai-3,0,450);
+    msg='Descansas y recargas pilas 😴. Energía ▲, estrés ▼.'; floatTxt('+Energía','#a7f070'); sfx('ok');
+  } else if(kind==='exercise'){
+    if(S.flare){ S.energia=clamp(S.energia-4,0,100); S.estres=clamp(S.estres-6,0,100);
+      msg='En brote conviene no forzar 🏃. Te desahogas un poco (estrés ▼) pero acabas algo cansado.'; }
+    else { S.energia=clamp(S.energia+7,0,100); S.estres=clamp(S.estres-9,0,100);
+      msg='Ejercicio suave (pasear, estiramientos) 🏃. Energía ▲, estrés ▼. ¡Bien!'; }
+    floatTxt('Estrés ▼','#a7f070'); sfx('ok');
+  } else if(kind==='family'){
+    S.estres=clamp(S.estres-15,0,100); S.energia=clamp(S.energia+4,0,100); S.cdai=clamp(S.cdai-2,0,450);
+    msg='Tiempo con tu familia y amigos 👨‍👩‍👧. El apoyo emocional reduce el estrés y ayuda a sobrellevar la enfermedad.'; floatTxt('Estrés ▼','#a7f070'); sfx('good');
+  } else if(kind==='work'){
+    S.dinero+=18; S.estres=clamp(S.estres+9,0,100); S.energia=clamp(S.energia-6,0,100);
+    msg='Semana de trabajo 💼. +18€, pero el estrés sube y la energía baja. Busca equilibrio.'; floatTxt('+18€','#ffcd75'); sfx('ok');
+  } else if(kind==='doctor'){
+    const ph=phaseInfo();
+    let extra = S.flare? ' El médico ajusta tu tratamiento del brote (CDAI ▼).':' Todo controlado, sigue así.';
+    if(S.flare){ S.cdai=clamp(S.cdai-10,0,450); }
+    msg=`Revisión médica 🏥. Tu estado: <b>${ph.label}</b> (CDAI ${Math.round(S.cdai)}).${extra}<br><br><span class="info">Recuerda: analíticas (PCR, VSG) y colonoscopia ayudan a vigilar la enfermedad.</span>`;
+    sfx('ok');
+  }
+  S.ap--;
+  showBox('Acción realizada', msg, [{t: S.ap>0?'➕ Otra acción':'✅ Terminar semana', cls:'primary', fn: S.ap>0?'actionPhase()':'endWeek()'}, ...(S.ap>0?[{t:'✅ Terminar semana',cls:'blue',fn:'endWeek()'}]:[])]);
+}
+
+/* ---------- CUADRO DE DIÁLOGO GENÉRICO ---------- */
+function showBox(speaker, text, buttons){
+  const btns=buttons.map(b=>`<button class="btn ${b.cls||''} ${buttons.length===1?'wide':'k'}" onclick="${b.fn}">${b.t}</button>`).join('');
+  render(`<div class="view">
+    ${hudHTML()}
+    <div id="stage">
+      <div id="scene" class="${S.flare?'scene-flare':season().cls}">
+        <span class="sprite">${moodSprite()}</span>
+      </div>
+      <div id="box">
+        <div class="speaker">${speaker}</div>
+        <div class="text">${text}</div>
+      </div>
+    </div>
+    <div id="menu">${btns}</div>
+  </div>`);
+}
+
+/* ---------- EVENTOS ALEATORIOS (disparadores reales) ---------- */
+const EVENTS=[
+  {id:'ibu', cond:()=>true, speaker:'🤕 Dolor de cabeza',
+   text:'Te duele la cabeza. En casa tienes ibuprofeno (un AINE) y paracetamol. ¿Qué tomas?',
+   opts:[
+     {t:'💊 Ibuprofeno',fn:'ev("ibu",0)'},
+     {t:'💊 Paracetamol',fn:'ev("ibu",1)'}],
+   res:[
+     {m:'<span class="bad">Los AINEs como el ibuprofeno pueden empeorar el Crohn.</span> Inflamación ▲▲.',fx:()=>{S.cdai=clamp(S.cdai+13,0,450);},s:'bad'},
+     {m:'<b>Buena elección.</b> El paracetamol es más seguro para el dolor en el Crohn.',fx:()=>{},s:'good'}]},
+  {id:'smoke', cond:()=>true, speaker:'🚬 Una fiesta',
+   text:'En una fiesta te ofrecen un cigarro. "Total, por uno...". ¿Qué haces?',
+   opts:[
+     {t:'🚬 Aceptar',fn:'ev("smoke",0)'},
+     {t:'🙅 Rechazar',fn:'ev("smoke",1)'}],
+   res:[
+     {m:'<span class="bad">El tabaco perjudica claramente la evolución del Crohn</span> (más brotes y complicaciones). Inflamación ▲.',fx:()=>{S.cdai=clamp(S.cdai+11,0,450); S.smoked=true; S.smokeFreeAllYear=false;},s:'bad'},
+     {m:'<b>¡Muy bien!</b> Mantenerte sin tabaco es de lo mejor que puedes hacer por tu intestino.',fx:()=>{S.estres=clamp(S.estres-3,0,100);},s:'good'}]},
+  {id:'stress', cond:()=>true, speaker:'😣 Semana intensa',
+   text:'Se acumula el trabajo y los recados. Puedes quedarte hasta tarde para terminarlo todo o parar y respirar.',
+   opts:[
+     {t:'💼 Forzar la máquina (+20€)',fn:'ev("stress",0)'},
+     {t:'🧘 Parar y descansar',fn:'ev("stress",1)'}],
+   res:[
+     {m:'Terminas todo (+20€) pero acabas agotado. Estrés ▲▲. El estrés sostenido favorece los brotes.',fx:()=>{S.dinero+=20; S.estres=clamp(S.estres+16,0,100); S.energia=clamp(S.energia-8,0,100);},s:'bad'},
+     {m:'Priorizas tu salud. Estrés ▼, energía ▲. A veces parar también es ganar.',fx:()=>{S.estres=clamp(S.estres-12,0,100); S.energia=clamp(S.energia+6,0,100);},s:'good'}]},
+  {id:'stopmed', cond:()=>!S.flare, speaker:'😌 Te encuentras genial',
+   text:'Llevas semanas bien. Piensas: "¿y si dejo la medicación, que ya no la necesito?"',
+   opts:[
+     {t:'🛑 Dejar la medicación',fn:'ev("stopmed",0)'},
+     {t:'✅ Seguir tomándola',fn:'ev("stopmed",1)'}],
+   res:[
+     {m:'<span class="bad">Error frecuente.</span> Abandonar el tratamiento en remisión es la causa nº1 de recaída. Riesgo de brote ▲▲.',fx:()=>{S.cdai=clamp(S.cdai+18,0,450); S.missedStreak+=2;},s:'bad'},
+     {m:'<b>Decisión acertada.</b> La medicación de mantenimiento es la que conserva la remisión. ¡Adherencia!',fx:()=>{S.cdai=clamp(S.cdai-4,0,450);},s:'good'}]},
+  {id:'infect', cond:()=>true, speaker:'🤧 Pillas un virus',
+   text:'Te ha entrado un resfriado fuerte. Tu cuerpo está más débil.',
+   opts:[
+     {t:'😴 Reposar y cuidarte',fn:'ev("infect",0)'},
+     {t:'💪 Hacer vida normal',fn:'ev("infect",1)'}],
+   res:[
+     {m:'Reposas y te recuperas bien. Energía baja un poco pero evitas males mayores.',fx:()=>{S.energia=clamp(S.energia-6,0,100);},s:'ok'},
+     {m:'Forzar con una infección puede desencadenar actividad de la enfermedad. Inflamación ▲, energía ▼.',fx:()=>{S.cdai=clamp(S.cdai+10,0,450); S.energia=clamp(S.energia-12,0,100);},s:'bad'}]},
+  {id:'feast', cond:()=>true, speaker:'🎉 Comida familiar',
+   text:'Gran comilona en familia: fritos, embutidos y postres con nata. ¿Cómo lo gestionas?',
+   opts:[
+     {t:'🍰 Comer de todo sin freno',fn:'ev("feast",0)'},
+     {t:'🥗 Disfrutar con moderación',fn:'ev("feast",1)'}],
+   res:[
+     {m:'Comida copiosa y grasa de golpe: justo lo que peor sienta. Inflamación ▲▲. Mejor 5–6 tomas pequeñas.',fx:()=>{S.cdai=clamp(S.cdai+12,0,450); S.estres=clamp(S.estres-4,0,100);},s:'bad'},
+     {m:'Disfrutas la reunión eligiendo lo que toleras y en poca cantidad. Estrés ▼ y sin sustos.',fx:()=>{S.estres=clamp(S.estres-8,0,100); S.nutricion=clamp(S.nutricion+3,0,100);},s:'good'}]}
+];
+let __curEvent=null;
+function maybeEvent(then){
+  if(Math.random()<0.62){
+    const pool=EVENTS.filter(e=>e.cond());
+    const e=pool[Math.floor(Math.random()*pool.length)];
+    __curEvent=e; __afterEvent=then;
+    const btns=e.opts.map(o=>({t:o.t,cls:'',fn:o.fn}));
+    showBox('⚡ '+e.speaker, e.text, e.opts.map(o=>({t:o.t,cls:'k',fn:o.fn})));
+  } else { then(); }
+}
+let __afterEvent=null;
+function ev(id,choice){
+  const e=__curEvent; const r=e.res[choice];
+  r.fx(); sfx(r.s);
+  showBox('⚡ '+e.speaker, r.m, [{t:'CONTINUAR ▶',cls:'primary',fn:'(__afterEvent)()'}]);
+}
+
+/* ---------- FIN DE SEMANA: cálculo ---------- */
+function endWeek(){
+  // primero: evento aleatorio, luego resolución
+  maybeEvent(resolveWeek);
+}
+function resolveWeek(){
+  // penalización por no medicarse
+  if(!S.tookMed){ S.cdai=clamp(S.cdai+10,0,450); S.missedStreak++; }
+  // tabaco activo (si fumó esta semana ya se aplicó; efecto residual leve si fumador)
+  // estrés alto y nutrición baja
+  if(S.estres>70) S.cdai=clamp(S.cdai+7,0,450);
+  if(S.nutricion<30){ S.cdai=clamp(S.cdai+6,0,450); S.energia=clamp(S.energia-4,0,100); }
+  if(S.energia<20) S.estres=clamp(S.estres+6,0,100);
+  // deriva natural de la vida
+  S.energia=clamp(S.energia-5,0,100);
+  S.nutricion=clamp(S.nutricion-5,0,100);
+  S.estres=clamp(S.estres+4,0,100);
+  S.dinero=clamp(S.dinero-7,-50,999);
+  if(S.dinero<0) S.estres=clamp(S.estres+5,0,100);
+  // si está en remisión y se cuida, el CDAI tiende suavemente a bajar
+  if(S.tookMed && S.estres<50 && S.cdai<150) S.cdai=clamp(S.cdai-3,0,450);
+
+  // determinar fase
+  const wasFlare=S.flare;
+  S.flare = S.cdai>=150;
+  if(S.flare) S.weeksFlare++; else S.weeksRemission++;
+
+  // contadores y mensajes de transición
+  let transition='';
+  if(S.flare && !wasFlare){
+    transition='flareStart';
+  } else if(!S.flare && wasFlare){
+    transition='flareEnd';
+  }
+
+  // ingreso hospitalario si brote muy grave
+  if(S.cdai>=400){
+    S.hospital++;
+    return showBox('🚑 Ingreso hospitalario',
+      'El brote se ha vuelto muy grave (CDAI '+Math.round(S.cdai)+'). Ingresas unos días para tratamiento intensivo. Te estabilizan, pero es un aviso serio.<br><br><span class="info">Lección: actuar pronto en el brote (medicación, descanso, dieta suave) evita llegar aquí.</span>',
+      [{t:'CONTINUAR ▶',cls:'primary',fn:'afterHospital()'}]);
+  }
+
+  if(transition==='flareStart'){
+    return showEdu('flare', ()=>weekTransition('flareStart'));
+  }
+  weekTransition(transition);
+}
+function afterHospital(){
+  S.cdai=240; S.energia=clamp(S.energia+20,0,100); S.estres=clamp(S.estres+10,0,100);
+  S.flare=true;
+  weekTransition('hospital');
+}
+function weekTransition(kind){
+  let speaker='📅 Fin de semana '+S.week, msg='';
+  if(kind==='flareStart'){ speaker='🔥 ¡Ha empezado un brote!'; msg='Tu CDAI ha superado 150. Entras en <b>fase de brote</b>. Céntrate en medicación, descanso y dieta suave para recuperar la remisión.'; sfx('bad'); }
+  else if(kind==='flareEnd'){ speaker='🌿 ¡Vuelve la calma!'; msg='Has bajado el CDAI por debajo de 150: <b>recuperas la remisión</b>. ¡Gran trabajo! Mantén los buenos hábitos para que dure.'; sfx('good'); }
+  else if(kind==='hospital'){ speaker='🏥 Tras el ingreso'; msg='Sales del hospital algo recuperado pero aún en brote. A cuidarse mucho estas semanas.'; }
+  else {
+    const ph=phaseInfo();
+    msg = S.flare
+      ? 'Sigues en brote (CDAI '+Math.round(S.cdai)+'). No bajes la guardia: medicación + descanso + dieta suave.'
+      : 'Semana en remisión 🌿 (CDAI '+Math.round(S.cdai)+'). Vas por buen camino.';
+  }
+  S.week++;
+  if(S.week>S.maxWeeks){ return showEnding(); }
+  showBox(speaker, msg, [{t:'▶ SIGUIENTE SEMANA',cls:'primary',fn:'startWeek()'}]);
+}
+
+/* ---------- FINAL ---------- */
+function showEnding(){
+  S.phase='ending';
+  const remPct=Math.round(S.weeksRemission/S.maxWeeks*100);
+  // logros
+  const ach=[];
+  ach.push({ok:S.smokeFreeAllYear,t:'🚭 Todo el año sin tabaco'});
+  ach.push({ok:S.medWeeks>=42,t:'💊 Adherencia ejemplar (≥42 sem.)'});
+  ach.push({ok:S.goodMeals>=S.badMeals*2,t:'🥗 Maestro de la dieta'});
+  ach.push({ok:S.weeksRemission>=40,t:'🌿 Año mayormente en calma'});
+  ach.push({ok:S.hospital===0,t:'🏥 Sin ingresos hospitalarios'});
+
+  let rank, face, color, finalMsg;
+  if(remPct>=80){ rank='¡EXCELENTE!'; face='🥳'; color='var(--c-good2)';
+    finalMsg='Has demostrado que <b>se puede vivir muy bien con Crohn</b>. Con buenos hábitos, adherencia y apoyo, la enfermedad se mantiene a raya.'; sfx('good'); }
+  else if(remPct>=55){ rank='¡BIEN!'; face='😊'; color='var(--c-warn)';
+    finalMsg='Has llevado bien la enfermedad la mayor parte del año. Pequeños ajustes (medicación constante, menos estrés) y lo bordarás.'; }
+  else { rank='AÑO DIFÍCIL'; face='💪'; color='var(--c-pink)';
+    finalMsg='Ha sido un año con muchos brotes. Lo importante: aprender qué los dispara (saltarse la medicación, tabaco, AINEs, estrés, mala dieta) para mejorar. <b>El Crohn es crónico, pero manejable.</b>'; }
+
+  const achHTML=ach.map(a=>`<span class="badge ${a.ok?'':'miss'}">${a.ok?'✔':'✘'} ${a.t}</span>`).join('');
+  render(`<div class="view">
+    <div id="box" style="max-height:none;flex:1">
+      <div class="speaker" style="text-align:center;color:${color};font-size:13px">${face} ${rank}</div>
+      <div style="text-align:center;font-size:46px;margin:6px 0">${face}</div>
+      <table class="summary">
+        <tr><td>Semanas en remisión</td><td>${S.weeksRemission} / ${S.maxWeeks} (${remPct}%)</td></tr>
+        <tr><td>Semanas en brote</td><td>${S.weeksFlare}</td></tr>
+        <tr><td>Semanas con medicación</td><td>${S.medWeeks}</td></tr>
+        <tr><td>Comidas acertadas</td><td>${S.goodMeals}</td></tr>
+        <tr><td>Ingresos hospitalarios</td><td>${S.hospital}</td></tr>
+      </table>
+      <div style="text-align:center;margin:8px 0">${achHTML}</div>
+      <div class="text" style="text-align:center">${finalMsg}</div>
+      <div class="src" style="text-align:center;margin-top:10px;color:var(--c-frame-dark);font-size:7px">Juego educativo basado en datos reales · No sustituye el consejo de tu médico.</div>
+    </div>
+    <div id="menu">
+      <button class="btn primary k" onclick="showTitle()">🔁 JUGAR DE NUEVO</button>
+      <button class="btn blue k" onclick="showEdu('family',showEnding)">📖 Repasar consejos</button>
+    </div>
+  </div>`);
+}
+
+/* ---------- ARRANQUE ---------- */
+newState();
+showTitle();
+</script>
+</body>
+</html>
