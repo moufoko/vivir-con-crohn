@@ -94,6 +94,11 @@
   .sprite{font-size:62px; filter:drop-shadow(3px 4px 0 #00000044); animation:bob 1.6s infinite ease-in-out;}
   @keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-7px);}}
   .deco{font-size:34px; opacity:.9; animation:bob 2.4s infinite ease-in-out;}
+  /* ---- sprites pixel-art dibujados ---- */
+  .psp{image-rendering:pixelated; display:inline-block; vertical-align:middle; filter:drop-shadow(2px 3px 0 #00000033);}
+  .psp.bob{animation:bob 1.6s infinite ease-in-out;}
+  .psp.bob2{animation:bob 2.4s infinite ease-in-out;}
+  .foodcard .e{min-height:46px; display:flex; align-items:center; justify-content:center;}
   /* ---- text/dialog box ---- */
   #box{
     background:#15131f; border-top:4px solid var(--c-frame);
@@ -283,47 +288,437 @@ function toggleMusic(){
 
 /* ---------- DATOS REALES: ALIMENTOS (tabla del libro de dieta) ---------- */
 const FOODS=[
-  // cat: good / test / bad
-  {n:'Arroz blanco',e:'🍚',cat:'good'},
-  {n:'Pasta',e:'🍝',cat:'good'},
-  {n:'Patata cocida',e:'🥔',cat:'good'},
-  {n:'Pan tostado',e:'🍞',cat:'good'},
-  {n:'Plátano',e:'🍌',cat:'good'},
-  {n:'Manzana',e:'🍎',cat:'good'},
-  {n:'Pera',e:'🍐',cat:'good'},
-  {n:'Merluza a la plancha',e:'🐟',cat:'good'},
-  {n:'Pollo a la plancha',e:'🍗',cat:'good'},
-  {n:'Ternera',e:'🥩',cat:'good'},
-  {n:'Jamón cocido',e:'🍖',cat:'good'},
-  {n:'Yogur',e:'🥛',cat:'good'},
-  {n:'Zanahoria cocida',e:'🥕',cat:'good'},
-  {n:'Tortilla francesa',e:'🍳',cat:'good'},
-  {n:'Membrillo',e:'🟧',cat:'good'},
-  {n:'Manzanilla',e:'🍵',cat:'good'},
+  // cat: good / test / bad ; shape+fill -> sprite pixel-art dibujado
+  {n:'Arroz blanco',cat:'good',shape:'bowl',fill:'#ffffff'},
+  {n:'Pasta',cat:'good',shape:'bowl',fill:'#ffd86b'},
+  {n:'Patata cocida',cat:'good',shape:'round',fill:'#f0d49a'},
+  {n:'Pan tostado',cat:'good',shape:'bread',fill:'#d39a5a'},
+  {n:'Pan blanco',cat:'good',shape:'bread',fill:'#f0d9a0'},
+  {n:'Plátano',cat:'good',shape:'banana',fill:'#ffd445'},
+  {n:'Manzana',cat:'good',shape:'round',fill:'#e0392b'},
+  {n:'Pera',cat:'good',shape:'round',fill:'#9fc24f'},
+  {n:'Merluza a la plancha',cat:'good',shape:'fish',fill:'#eae3d0'},
+  {n:'Pollo a la plancha',cat:'good',shape:'meat',fill:'#e8cfa0'},
+  {n:'Pavo a la plancha',cat:'good',shape:'meat',fill:'#ecd6ae'},
+  {n:'Ternera',cat:'good',shape:'meat',fill:'#b5483f'},
+  {n:'Jamón cocido',cat:'good',shape:'meat',fill:'#ff9aa8'},
+  {n:'Yogur',cat:'good',shape:'glass',fill:'#fff4e0'},
+  {n:'Queso fresco',cat:'good',shape:'round',fill:'#fff7e0'},
+  {n:'Zanahoria cocida',cat:'good',shape:'round',fill:'#ff8c3b'},
+  {n:'Calabacín cocido',cat:'good',shape:'round',fill:'#7bbf5a'},
+  {n:'Tortilla francesa',cat:'good',shape:'egg',fill:'#ffd34d'},
+  {n:'Membrillo',cat:'good',shape:'round',fill:'#d98a2b'},
+  {n:'Compota de manzana',cat:'good',shape:'bowl',fill:'#d9a25a'},
+  {n:'Sémola',cat:'good',shape:'bowl',fill:'#f3e4b0'},
+  {n:'Caldo de pollo',cat:'good',shape:'bowl',fill:'#e7c46a'},
+  {n:'Tortita de arroz',cat:'good',shape:'round',fill:'#f0e6c0'},
+  {n:'Manzanilla',cat:'good',shape:'cup',fill:'#bcd96a'},
 
-  {n:'Lentejas',e:'🍲',cat:'test'},
-  {n:'Garbanzos',e:'🫘',cat:'test'},
-  {n:'Naranja',e:'🍊',cat:'test'},
-  {n:'Cebolla',e:'🧅',cat:'test'},
-  {n:'Coliflor',e:'🥦',cat:'test'},
-  {n:'Pan integral',e:'🥖',cat:'test'},
-  {n:'Gambas',e:'🦐',cat:'test'},
-  {n:'Bacalao',e:'🐠',cat:'test'},
-  {n:'Almendras',e:'🌰',cat:'test'},
-  {n:'Leche desnatada',e:'🥛',cat:'test'},
+  {n:'Lentejas',cat:'test',shape:'bowl',fill:'#8a5a2b'},
+  {n:'Garbanzos',cat:'test',shape:'bowl',fill:'#e0b85a'},
+  {n:'Guisantes',cat:'test',shape:'bowl',fill:'#6fae3a'},
+  {n:'Maíz',cat:'test',shape:'bowl',fill:'#ffd23b'},
+  {n:'Naranja',cat:'test',shape:'round',fill:'#ff9a2b'},
+  {n:'Kiwi',cat:'test',shape:'round',fill:'#8fbf4a'},
+  {n:'Tomate',cat:'test',shape:'round',fill:'#e2402f'},
+  {n:'Cebolla',cat:'test',shape:'round',fill:'#efe2c0'},
+  {n:'Champiñones',cat:'test',shape:'round',fill:'#d8c4a0'},
+  {n:'Coliflor',cat:'test',shape:'veg',fill:'#f0ead8'},
+  {n:'Pan integral',cat:'test',shape:'bread',fill:'#9c6b3a'},
+  {n:'Gambas',cat:'test',shape:'fish',fill:'#ff8a6a'},
+  {n:'Bacalao',cat:'test',shape:'fish',fill:'#eef0e0'},
+  {n:'Almendras',cat:'test',shape:'round',fill:'#c9a06a'},
+  {n:'Leche desnatada',cat:'test',shape:'glass',fill:'#f4f8ff'},
 
-  {n:'Fritos / Rebozados',e:'🍟',cat:'bad'},
-  {n:'Chorizo / Embutido',e:'🌭',cat:'bad'},
-  {n:'Tocino / Cerdo graso',e:'🥓',cat:'bad'},
-  {n:'Comida picante',e:'🌶️',cat:'bad'},
-  {n:'Café',e:'☕',cat:'bad'},
-  {n:'Chocolate',e:'🍫',cat:'bad'},
-  {n:'Cerveza / Alcohol',e:'🍺',cat:'bad'},
-  {n:'Leche entera',e:'🥛',cat:'bad'},
-  {n:'Helado / Nata',e:'🍦',cat:'bad'},
-  {n:'Coles',e:'🥬',cat:'bad'}
+  {n:'Fritos / Rebozados',cat:'bad',shape:'fries',fill:'#e8b063'},
+  {n:'Patatas fritas (bolsa)',cat:'bad',shape:'fries',fill:'#e8b063'},
+  {n:'Chorizo / Embutido',cat:'bad',shape:'sausage',fill:'#b1352f'},
+  {n:'Tocino / Cerdo graso',cat:'bad',shape:'meat',fill:'#f0a6a6'},
+  {n:'Pizza',cat:'bad',shape:'round',fill:'#e8a33b'},
+  {n:'Comida picante',cat:'bad',shape:'banana',fill:'#e23b2f'},
+  {n:'Pimientos fritos',cat:'bad',shape:'veg',fill:'#4fae3a'},
+  {n:'Café',cat:'bad',shape:'cup',fill:'#5a3a1e'},
+  {n:'Refresco con gas',cat:'bad',shape:'glass',fill:'#6a3a1e'},
+  {n:'Chocolate',cat:'bad',shape:'choco',fill:'#5a3418'},
+  {n:'Bollería / Donut',cat:'bad',shape:'round',fill:'#d98a3b'},
+  {n:'Cerveza / Alcohol',cat:'bad',shape:'glass',fill:'#f4b740'},
+  {n:'Leche entera',cat:'bad',shape:'glass',fill:'#fff9ee'},
+  {n:'Mantequilla',cat:'bad',shape:'round',fill:'#ffe06a'},
+  {n:'Helado / Nata',cat:'bad',shape:'ice',fill:'#ff9ec2'},
+  {n:'Coles',cat:'bad',shape:'veg',fill:'#6fae3a'}
 ];
 function pick(arr,n){ const c=[...arr]; const out=[]; while(out.length<n&&c.length){ out.push(c.splice(Math.floor(Math.random()*c.length),1)[0]); } return out; }
+
+/* =====================================================================
+   MOTOR DE SPRITES PIXEL-ART (dibujados a mano, estilo 16-bit)
+   Cada sprite es una rejilla de caracteres -> color de la paleta MP.
+   '.' o ' ' = transparente.  'X'/'x' = relleno dinámico (comidas).
+   ===================================================================== */
+const MP={
+  '.':null,' ':null,
+  o:'#2a2440', k:'#15121f', W:'#fffce8',
+  H:'#6b4a2a', h:'#503418',
+  S:'#ffcf9e', s:'#e0a878',
+  G:'#bcd96a', g:'#9fc24f',
+  E:'#2a2440', M:'#c8455f', P:'#ff8fb0',
+  B:'#41a6f6', b:'#2a78c0',
+  R:'#ef476f', r:'#b13e53',
+  N:'#3b2c5a',
+  T:'#8a5a32', t:'#5f3c1e',
+  Y:'#ffcd4d', y:'#e0a838',
+  L:'#5fa83c', l:'#3f7a28',
+  C:'#5a3418', c:'#3e2410',
+  A:'#ff924c', a:'#d96a26',
+  F:'#e8b063', f:'#c98b46',
+  w:'#bfe3ff', u:'#8fc8f0',
+  D:'#5bc0d0', d:'#3a93a3',
+  X:'#ffffff', x:'#cccccc'
+};
+function shade(hex,f){ f=f||0.72; const n=parseInt(hex.slice(1),16); let r=(n>>16)&255,g=(n>>8)&255,b=n&255; r=Math.round(r*f);g=Math.round(g*f);b=Math.round(b*f); return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1); }
+function drawGrid(grid,pal,scale){
+  scale=scale||6; const h=grid.length, w=grid[0].length;
+  const cv=document.createElement('canvas'); cv.width=w*scale; cv.height=h*scale;
+  const c=cv.getContext('2d'); c.imageSmoothingEnabled=false;
+  for(let y=0;y<h;y++){ const row=grid[y]; for(let xx=0;xx<row.length;xx++){
+    const ch=row[xx]; if(ch==='.'||ch===' ')continue; const col=pal[ch]; if(!col)continue;
+    c.fillStyle=col; c.fillRect(xx*scale,y*scale,scale,scale);
+  }}
+  return cv.toDataURL();
+}
+
+/* ---- PERSONAJE: Álex (16x16) con 4 estados de ánimo ---- */
+function alexGrid(face){
+  // face: filas 3-8 (cara). Cuerpo común debajo.
+  return [
+    "................",
+    "....oooooooo....",
+    "...oHHHHHHHHo...",
+    face[0], face[1], face[2], face[3], face[4], face[5],
+    "..RRoBBBBBBoRR..",
+    "..RRoBBBBBBoRR..",
+    "..oSoBBBBBBoSo..",
+    "...oBBBBBBBBo...",
+    "...oNNNNNNNNo...",
+    "...oNNNooNNNo...",
+    "...okkkookkko..."
+  ];
+}
+const CH={
+  alex_happy: alexGrid([
+    "...oHsSSSSsHo...",
+    "...oSSSSSSSSo...",
+    "...oSEESSEESo...",
+    "...oSPSSSSPSo...",
+    "...oSSMMMMSSo...",
+    "...oSSSSSSSSo..."]),
+  alex_neutral: alexGrid([
+    "...oHsSSSSsHo...",
+    "...oSSSSSSSSo...",
+    "...oSEESSEESo...",
+    "...oSSSSSSSSo...",
+    "...oSSSMMSSSo...",
+    "...oSSSSSSSSo..."]),
+  alex_sad: alexGrid([
+    "...oHsSSSSsHo...",
+    "...oSSSSSSSSo...",
+    "...oSEESSEESo...",
+    "...oSwSSSSSSo...",
+    "...oSSMSSMSSo...",
+    "...oSSSSSSSSo..."]),
+  alex_sick: alexGrid([
+    "...oHgGGGGgHo...",
+    "...oGGGGGGGGo...",
+    "...oGEEGGEEGo...",
+    "...oGGGGGGwGo...",
+    "...oGGMkkMGGo...",
+    "...oGGGGGGGGo..."]),
+  /* ---- decorados de temporada y props (12x12) ---- */
+  snowman:[
+    "............",
+    "....oooo....",
+    "...oWWWWo...",
+    "...oWkWko...",
+    "...oWAAWo...",
+    "...oWWWWo...",
+    ".oWWWWWWWWo.",
+    ".oWWkWWkWWo.",
+    ".oWWWWWWWWo.",
+    "..oWWWWWWo..",
+    "...oooooo...",
+    "............"],
+  tulip:[
+    "............",
+    "...R.RR.R...",
+    "..RRRRRRRR..",
+    "..RRRRRRRR..",
+    "...RRRRRR...",
+    "....RRRR....",
+    ".....LL.....",
+    ".....LL.....",
+    "...LLLLLL...",
+    ".....LL.....",
+    ".....LL.....",
+    "............"],
+  sun:[
+    "............",
+    "...yYYy.....",
+    "..yYYYYYy...",
+    ".YYYYYYYYy..",
+    ".YYYYYYYYy..",
+    ".YYYYYYYYy..",
+    ".YYYYYYYYy..",
+    "..yYYYYYy...",
+    "...yYYy.....",
+    "............",
+    "............",
+    "............"],
+  leaf:[
+    "............",
+    ".....AA.....",
+    "....AAAA....",
+    "...AAAAAA...",
+    "..AAAAtAAA..",
+    "..AAAtAAAA..",
+    "...AAtAAA...",
+    "...AtAAA....",
+    "....t.......",
+    "....t.......",
+    "............",
+    "............"],
+  house:[
+    "............",
+    ".....R......",
+    "....RRR.....",
+    "...RRRRR....",
+    "..RRRRRRR...",
+    ".RRRRRRRRR..",
+    "..TTTTTTT...",
+    "..TBBTBBT...",
+    "..TBBTBBT...",
+    "..TTTNNTT...",
+    "..TTTNNTT...",
+    "..ooooooo..."],
+  plate:[
+    "............",
+    "............",
+    "....oooo....",
+    "...oRAAYo...",
+    "..oRRYYAAo..",
+    ".WWWWWWWWWW.",
+    ".oWWWWWWWWo.",
+    "..oWWWWWWo..",
+    "...oooooo...",
+    "............",
+    "............",
+    "............"]
+};
+/* ---- FORMAS DE COMIDA (relleno X dinámico por alimento) ---- */
+const SHAPES={
+  bowl:[
+    "............",
+    "............",
+    "...XXXXXX...",
+    "..XXXXXXXX..",
+    ".DDDDDDDDDD.",
+    ".oDDDDDDDDo.",
+    ".oDDDDDDDDo.",
+    "..oDDDDDDo..",
+    "...oooooo...",
+    "............",
+    "............",
+    "............"],
+  round:[
+    "............",
+    ".....L......",
+    "...oooooo...",
+    "..oXXXXXXo..",
+    ".oXXXXXXXXo.",
+    ".oXXXXxXXXo.",
+    ".oXXXXxXXXo.",
+    ".oXXXXXXXXo.",
+    "..oXXXXXXo..",
+    "...oooooo...",
+    "............",
+    "............"],
+  glass:[
+    "............",
+    "...oooooo...",
+    "...oXXXXo...",
+    "...oXXXXo...",
+    "...oXXXXo...",
+    "...oXXXXo...",
+    "...oXXXXo...",
+    "...oXXXXo...",
+    "...oxxxxo...",
+    "...oooooo...",
+    "............",
+    "............"],
+  cup:[
+    "............",
+    "..oooooo....",
+    "..oXXXXoooo.",
+    "..oXXXXo..o.",
+    "..oXXXXoooo.",
+    "..oXXXXo....",
+    "..oxxxxo....",
+    "..oooooo....",
+    "............",
+    "............",
+    "............",
+    "............"],
+  fish:[
+    "............",
+    "............",
+    "...ooooo....",
+    ".ooXXXXXoo.o",
+    "oXEXXXXXXXoo",
+    "oXXXXXXXXXXo",
+    ".ooXXXXXoo.o",
+    "...ooooo....",
+    "............",
+    "............",
+    "............",
+    "............"],
+  bread:[
+    "............",
+    "............",
+    "...oooooo...",
+    "..oXXXXXXo..",
+    ".oXXXXXXXXo.",
+    ".oXXxxxxXXo.",
+    ".oXXXXXXXXo.",
+    "..oXXXXXXo..",
+    "...oooooo...",
+    "............",
+    "............",
+    "............"],
+  meat:[
+    "............",
+    "............",
+    "...oooooo...",
+    "..oXXXXXXo..",
+    ".oXXXXXXXXo.",
+    ".oXXXxxXXXo.",
+    ".oXXXXXXXXo.",
+    "..oXXXXXXo..",
+    "...oooooo...",
+    "............",
+    "............",
+    "............"],
+  egg:[
+    "............",
+    "............",
+    "...WWWWW....",
+    ".WWWWWWWWW..",
+    ".WWWyYYyWW..",
+    ".WWWYYYYWW..",
+    ".WWWyYYyWW..",
+    ".WWWWWWWWW..",
+    "..WWWWWW....",
+    "............",
+    "............",
+    "............"],
+  veg:[
+    "............",
+    "...X.X.X....",
+    "..XXXXXXXX..",
+    ".XXXXXXXXXX.",
+    ".XXXXxxXXXX.",
+    "..XXXXXXXX..",
+    "....XXXX....",
+    "....llll....",
+    "....oooo....",
+    "............",
+    "............",
+    "............"],
+  fries:[
+    "............",
+    "...Y.Y.Y....",
+    "..oYoYoYo...",
+    "..RRRRRRRR..",
+    "..RWRRRRWR..",
+    "..RRRRRRRR..",
+    "...RRRRRR...",
+    "....oooo....",
+    "............",
+    "............",
+    "............",
+    "............"],
+  sausage:[
+    "............",
+    ".oo.........",
+    "oXXoo.......",
+    "oXXXXoo.....",
+    ".ooXXXXoo...",
+    "...ooXXXXoo.",
+    ".....ooXXXo.",
+    ".......ooo..",
+    "............",
+    "............",
+    "............",
+    "............"],
+  choco:[
+    "............",
+    "............",
+    ".oooooooo...",
+    ".oCCCCCCo...",
+    ".oCoCoCoo...",
+    ".oCCCCCCo...",
+    ".oCoCoCoo...",
+    ".oCCCCCCo...",
+    ".oooooooo...",
+    "............",
+    "............",
+    "............"],
+  ice:[
+    "............",
+    "...XXXX.....",
+    "..XXXXXXx...",
+    "..XXXXXXx...",
+    "...XXXXx....",
+    "...FFFF.....",
+    "....FF......",
+    "....FF......",
+    ".....o......",
+    "............",
+    "............",
+    "............"],
+  banana:[
+    "............",
+    "........ooo.",
+    ".......oXXo.",
+    "......oXXo..",
+    ".....oXXo...",
+    "....oXXo....",
+    "..ooXXo.....",
+    ".oXXXo......",
+    ".oooo.......",
+    "............",
+    "............",
+    "............"]
+};
+SHAPES.plate = CH.plate;
+/* pre-render de sprites fijos */
+const SPRITES={};
+for(const k in CH){ SPRITES[k]=drawGrid(CH[k],MP,6); }
+function psp(name,size,cls){ return `<img class="psp ${cls||''}" style="width:${size}px;height:${size}px" src="${SPRITES[name]||''}" alt="">`; }
+const _foodCache={};
+function foodImg(f,size){
+  const key=(f.shape||'round')+'|'+(f.fill||'#fff');
+  if(!_foodCache[key]){
+    const pal=Object.assign({},MP,{X:f.fill||'#ffffff', x:f.fill2||shade(f.fill||'#ffffff',0.72)});
+    _foodCache[key]=drawGrid(SHAPES[f.shape]||SHAPES.round, pal, 6);
+  }
+  return `<img class="psp" style="width:${size}px;height:${size}px" src="${_foodCache[key]}" alt="">`;
+}
+function moodKey(){
+  if(S.flare) return 'sick';
+  if(S.energia<35||S.estres>70) return 'sad';
+  if(S.energia>70&&S.estres<35) return 'happy';
+  return 'neutral';
+}
+function charImg(size,mood){ return psp('alex_'+(mood||moodKey()), size||72, 'bob'); }
+function decoSprite(){ const w=S.week; if(w<=13)return 'snowman'; if(w<=26)return 'tulip'; if(w<=39)return 'sun'; return 'leaf'; }
 
 /* ---------- FICHAS EDUCATIVAS (datos reales de los libros) ---------- */
 const EDU={
@@ -441,7 +836,7 @@ function showTitle(){
   S.phase='title';
   render(`<div class="view center">
     <div class="logo">VIVIR<br>CON CROHN<small>Un año de tu vida · estrategia 16-bit</small></div>
-    <div class="sprite" style="font-size:70px">🦸</div>
+    <div>${charImg(120,'happy')}</div>
     <div class="small blink" style="color:var(--c-good2)">▶ PULSA PARA EMPEZAR</div>
     <div class="row" style="margin-top:6px">
       <button class="btn primary" onclick="startGame()">🎮 NUEVA PARTIDA</button>
@@ -507,7 +902,7 @@ function mealPhase(){
   const options=pick(FOODS,3);
   const cards=options.map((f,i)=>`
     <div class="foodcard" onclick="eat(${i})">
-      <div class="e">${f.e}</div><div class="n">${f.n}</div>
+      <div class="e">${foodImg(f,44)}</div><div class="n">${f.n}</div>
     </div>`).join('');
   window.__meal=options;
   const ph=phaseInfo();
@@ -518,9 +913,9 @@ function mealPhase(){
     ${hudHTML()}
     <div id="stage">
       <div id="scene" class="${S.flare?'scene-flare':season().cls}">
-        <span class="deco">${season().deco[0]}</span>
-        <span class="sprite">${moodSprite()}</span>
-        <span class="deco">🍽️</span>
+        ${psp(decoSprite(),42,'bob2')}
+        ${charImg(78)}
+        ${psp('plate',42,'bob2')}
       </div>
       <div id="box">
         <div class="speaker">🍽️ MENÚ DE LA SEMANA</div>
@@ -536,25 +931,25 @@ function eat(i){
   if(f.cat==='good'){
     S.nutricion=clamp(S.nutricion+8,0,100); S.energia=clamp(S.energia+3,0,100); S.cdai=clamp(S.cdai-4,0,450);
     S.goodMeals++; sound='good';
-    msg=`<b>¡Buena elección!</b> ${f.n} ${f.e} suele tolerarse bien. Nutrición ▲, inflamación ▼.`;
+    msg=`<b>¡Buena elección!</b> ${f.n} ${foodImg(f,20)} suele tolerarse bien. Nutrición ▲, inflamación ▼.`;
     floatTxt('+Nutrición','#a7f070');
   } else if(f.cat==='test'){
     const badLuck = Math.random() < (S.flare?0.7:0.4);
     if(badLuck){
       S.cdai=clamp(S.cdai+6,0,450); S.energia=clamp(S.energia-3,0,100); S.estres=clamp(S.estres+3,0,100);
       S.badMeals++; sound='bad';
-      msg=`${f.n} ${f.e} es de "probar tolerancia"... <span class="bad">esta vez te sentó mal</span>. Recuerda: pruébalos en pequeña cantidad. Inflamación ▲.`;
+      msg=`${f.n} ${foodImg(f,20)} es de "probar tolerancia"... <span class="bad">esta vez te sentó mal</span>. Recuerda: pruébalos en pequeña cantidad. Inflamación ▲.`;
       floatTxt('Sentó mal','#ff77a8');
     } else {
       S.nutricion=clamp(S.nutricion+5,0,100); S.goodMeals++; sound='ok';
-      msg=`${f.n} ${f.e} es de "probar tolerancia" y <b>hoy te sentó bien</b>. Nutrición ▲.`;
+      msg=`${f.n} ${foodImg(f,20)} es de "probar tolerancia" y <b>hoy te sentó bien</b>. Nutrición ▲.`;
       floatTxt('+Nutrición','#a7f070');
     }
   } else { // bad
     const hit=S.flare?16:9;
     S.cdai=clamp(S.cdai+hit,0,450); S.energia=clamp(S.energia-4,0,100); S.estres=clamp(S.estres+2,0,100);
     S.nutricion=clamp(S.nutricion+1,0,100); S.badMeals++; sound='bad';
-    msg=`${f.n} ${f.e} estaba rico... pero <span class="bad">suele sentar mal</span> en el Crohn (graso/irritante). Inflamación ▲▲${S.flare?' (¡y estás en brote!)':''}.`;
+    msg=`${f.n} ${foodImg(f,20)} estaba rico... pero <span class="bad">suele sentar mal</span> en el Crohn (graso/irritante). Inflamación ▲▲${S.flare?' (¡y estás en brote!)':''}.`;
     floatTxt('Inflamación +','#ef476f');
   }
   sfx(sound);
@@ -570,9 +965,9 @@ function actionPhase(){
     ${hudHTML()}
     <div id="stage">
       <div id="scene" class="${S.flare?'scene-flare':season().cls}">
-        <span class="deco">${season().deco[1]}</span>
-        <span class="sprite">${moodSprite()}</span>
-        <span class="deco">🏠</span>
+        ${psp(decoSprite(),42,'bob2')}
+        ${charImg(78)}
+        ${psp('house',42,'bob2')}
       </div>
       <div id="box">
         <div class="speaker">⭐ TUS ACCIONES (${S.ap} restantes)</div>
@@ -637,7 +1032,7 @@ function showBox(speaker, text, buttons){
     ${hudHTML()}
     <div id="stage">
       <div id="scene" class="${S.flare?'scene-flare':season().cls}">
-        <span class="sprite">${moodSprite()}</span>
+        ${charImg(78)}
       </div>
       <div id="box">
         <div class="speaker">${speaker}</div>
@@ -697,7 +1092,63 @@ const EVENTS=[
      {t:'🥗 Disfrutar con moderación',fn:'ev("feast",1)'}],
    res:[
      {m:'Comida copiosa y grasa de golpe: justo lo que peor sienta. Inflamación ▲▲. Mejor 5–6 tomas pequeñas.',fx:()=>{S.cdai=clamp(S.cdai+12,0,450); S.estres=clamp(S.estres-4,0,100);},s:'bad'},
-     {m:'Disfrutas la reunión eligiendo lo que toleras y en poca cantidad. Estrés ▼ y sin sustos.',fx:()=>{S.estres=clamp(S.estres-8,0,100); S.nutricion=clamp(S.nutricion+3,0,100);},s:'good'}]}
+     {m:'Disfrutas la reunión eligiendo lo que toleras y en poca cantidad. Estrés ▼ y sin sustos.',fx:()=>{S.estres=clamp(S.estres-8,0,100); S.nutricion=clamp(S.nutricion+3,0,100);},s:'good'}]},
+  {id:'alcohol', cond:()=>true, speaker:'🥂 Una celebración',
+   text:'Hay un brindis con bebidas alcohólicas. ¿Te animas?',
+   opts:[
+     {t:'🍷 Beber alcohol',fn:'ev("alcohol",0)'},
+     {t:'💧 Brindar con agua/zumo',fn:'ev("alcohol",1)'}],
+   res:[
+     {m:'El alcohol irrita el intestino y suele sentar mal en el Crohn. Inflamación ▲.',fx:()=>{S.cdai=clamp(S.cdai+9,0,450); S.energia=clamp(S.energia-4,0,100);},s:'bad'},
+     {m:'Brindas igual y cuidas tu intestino. Sin sustos. 🥤',fx:()=>{S.estres=clamp(S.estres-4,0,100);},s:'good'}]},
+  {id:'forgotmed', cond:()=>true, speaker:'📦 Sales de viaje',
+   text:'Te vas unos días fuera. ¿Preparas y llevas tu medicación?',
+   opts:[
+     {t:'🧳 Prepararla con tiempo',fn:'ev("forgotmed",0)'},
+     {t:'🤷 Ya la compraré allí',fn:'ev("forgotmed",1)'}],
+   res:[
+     {m:'<b>Bien planificado.</b> Llevar la medicación asegura no romper la pauta. Adherencia ✔.',fx:()=>{S.cdai=clamp(S.cdai-3,0,450);},s:'good'},
+     {m:'Te quedas sin medicación varios días: la adherencia se rompe y sube el riesgo de brote. Inflamación ▲▲.',fx:()=>{S.cdai=clamp(S.cdai+14,0,450); S.missedStreak++;},s:'bad'}]},
+  {id:'sleep', cond:()=>true, speaker:'🌙 Maratón de series',
+   text:'Te apetece trasnochar viendo series varias noches seguidas.',
+   opts:[
+     {t:'📺 Trasnochar',fn:'ev("sleep",0)'},
+     {t:'😴 Dormir bien',fn:'ev("sleep",1)'}],
+   res:[
+     {m:'La falta de sueño aumenta el cansancio y el estrés, que pueden favorecer un brote. Energía ▼, estrés ▲.',fx:()=>{S.energia=clamp(S.energia-12,0,100); S.estres=clamp(S.estres+10,0,100);},s:'bad'},
+     {m:'Dormir bien repara el cuerpo y baja el estrés. Energía ▲, estrés ▼.',fx:()=>{S.energia=clamp(S.energia+10,0,100); S.estres=clamp(S.estres-8,0,100);},s:'good'}]},
+  {id:'joint', cond:()=>true, speaker:'🦴 Te duelen las articulaciones',
+   text:'Notas dolor e hinchazón en una rodilla. El Crohn puede dar molestias fuera del intestino (articulaciones, piel, ojos).',
+   opts:[
+     {t:'🏥 Comentarlo al médico',fn:'ev("joint",0)'},
+     {t:'😶 Ignorarlo',fn:'ev("joint",1)'}],
+   res:[
+     {m:'<b>Bien hecho.</b> Las manifestaciones extraintestinales conviene comentarlas: se pueden tratar. Estrés ▼.',fx:()=>{S.estres=clamp(S.estres-5,0,100);},s:'good'},
+     {m:'Ignorarlo hace que sigas incómodo y preocupado. Estrés ▲, energía ▼.',fx:()=>{S.estres=clamp(S.estres+6,0,100); S.energia=clamp(S.energia-5,0,100);},s:'bad'}]},
+  {id:'support', cond:()=>true, speaker:'💬 Tu familia te pregunta',
+   text:'Un familiar nota que estás apagado y te pregunta cómo llevas la enfermedad.',
+   opts:[
+     {t:'❤️ Compartir cómo te sientes',fn:'ev("support",0)'},
+     {t:'🚪 "Estoy bien" y aislarte',fn:'ev("support",1)'}],
+   res:[
+     {m:'Compartir alivia mucho. El apoyo familiar es clave para sobrellevar una enfermedad crónica. Estrés ▼▼.',fx:()=>{S.estres=clamp(S.estres-14,0,100); S.energia=clamp(S.energia+5,0,100);},s:'good'},
+     {m:'Aislarte hace la carga más pesada y solitaria. Estrés ▲.',fx:()=>{S.estres=clamp(S.estres+9,0,100);},s:'bad'}]},
+  {id:'faddiet', cond:()=>true, speaker:'📱 Dieta milagro de internet',
+   text:'Ves una "dieta milagro" que promete curar el Crohn quitando muchísimos alimentos. ¿La sigues?',
+   opts:[
+     {t:'🥦 Seguirla a rajatabla',fn:'ev("faddiet",0)'},
+     {t:'🧑‍⚕️ Consultar antes',fn:'ev("faddiet",1)'}],
+   res:[
+     {m:'Las dietas muy restrictivas sin control pueden dejarte sin nutrientes. La dieta debe ser <b>individualizada</b>. Nutrición ▼.',fx:()=>{S.nutricion=clamp(S.nutricion-12,0,100); S.energia=clamp(S.energia-4,0,100);},s:'bad'},
+     {m:'Bien: no hay dieta milagro. Lo correcto es adaptarla a tu tolerancia con tu equipo médico. Nutrición ▲.',fx:()=>{S.nutricion=clamp(S.nutricion+5,0,100);},s:'good'}]},
+  {id:'water', cond:()=>S.flare, speaker:'💧 Diarrea y sed',
+   text:'Con el brote vas mucho al baño y te notas deshidratado.',
+   opts:[
+     {t:'🚰 Beber agua a sorbos',fn:'ev("water",0)'},
+     {t:'🥤 Beber refrescos con gas',fn:'ev("water",1)'}],
+   res:[
+     {m:'Hidratarte bien es importante en los brotes con diarrea. Energía ▲.',fx:()=>{S.energia=clamp(S.energia+8,0,100); S.cdai=clamp(S.cdai-3,0,450);},s:'good'},
+     {m:'Los refrescos con gas y azúcar pueden irritar más. Mejor agua. Inflamación ▲.',fx:()=>{S.cdai=clamp(S.cdai+7,0,450);},s:'bad'}]}
 ];
 let __curEvent=null;
 function maybeEvent(then){
@@ -809,7 +1260,7 @@ function showEnding(){
   render(`<div class="view">
     <div id="box" style="max-height:none;flex:1">
       <div class="speaker" style="text-align:center;color:${color};font-size:13px">${face} ${rank}</div>
-      <div style="text-align:center;font-size:46px;margin:6px 0">${face}</div>
+      <div style="text-align:center;margin:6px 0">${charImg(96, remPct>=55?'happy':'sad')} <span style="font-size:34px;vertical-align:middle">${face}</span></div>
       <table class="summary">
         <tr><td>Semanas en remisión</td><td>${S.weeksRemission} / ${S.maxWeeks} (${remPct}%)</td></tr>
         <tr><td>Semanas en brote</td><td>${S.weeksFlare}</td></tr>
