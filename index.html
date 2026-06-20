@@ -263,7 +263,7 @@ const G = document.getElementById('game');
 let S = {};
 function newState(){
   S = {
-    week:1, maxWeeks:52,
+    week:1, maxWeeks:26,
     ap:3, apMax:3,
     cdai:90,                 // <150 remisión, 150-250 leve, 251-350 mod, >350 grave
     energia:78, nutricion:75, estres:30, dinero:55,
@@ -762,7 +762,7 @@ function moodKey(){
   return 'neutral';
 }
 function charImg(size,mood){ return psp('alex_'+(mood||moodKey()), size||72, 'bob'); }
-function decoSprite(){ const w=S.week; if(w<=13)return 'snowman'; if(w<=26)return 'tulip'; if(w<=39)return 'sun'; return 'leaf'; }
+function decoSprite(){ const w=S.week; if(w<=6)return 'snowman'; if(w<=13)return 'tulip'; if(w<=20)return 'sun'; return 'leaf'; }
 
 /* ---------- FICHAS EDUCATIVAS (datos reales de los libros) ---------- */
 const EDU={
@@ -835,9 +835,9 @@ function phaseInfo(){
 }
 function season(){
   const w=S.week;
-  if(w<=13) return {cls:'scene-winter',name:'Invierno',deco:['❄️','⛄']};
-  if(w<=26) return {cls:'scene-spring',name:'Primavera',deco:['🌷','🦋']};
-  if(w<=39) return {cls:'scene-summer',name:'Verano',deco:['☀️','🌻']};
+  if(w<=6) return {cls:'scene-winter',name:'Invierno',deco:['❄️','⛄']};
+  if(w<=13) return {cls:'scene-spring',name:'Primavera',deco:['🌷','🦋']};
+  if(w<=20) return {cls:'scene-summer',name:'Verano',deco:['☀️','🌻']};
   return {cls:'scene-autumn',name:'Otoño',deco:['🍂','🍁']};
 }
 function moodSprite(){
@@ -885,14 +885,14 @@ function barHTML(lbl,pct,color,num,isCdai){
 function showTitle(){
   S.phase='title';
   render(`<div class="view center">
-    <div class="logo">VIVIR<br>CON CROHN<small>Un año de tu vida · estrategia 16-bit</small></div>
+    <div class="logo">VIVIR<br>CON CROHN<small>6 meses de tu vida · estrategia 16-bit</small></div>
     <div>${charImg(120,'happy')}</div>
     <div class="small blink" style="color:var(--c-good2)">▶ PULSA PARA EMPEZAR</div>
     <div class="row" style="margin-top:6px">
       <button class="btn primary" onclick="startGame()">🎮 NUEVA PARTIDA</button>
       <button class="btn blue" onclick="howTo()">❓ CÓMO SE JUEGA</button>
     </div>
-    <div class="tiny" style="color:var(--c-frame-dark);max-width:80%">Acompaña a Álex durante 52 semanas. Toma buenas decisiones para mantener la enfermedad en calma. Basado en datos médicos reales.</div>
+    <div class="tiny" style="color:var(--c-frame-dark);max-width:80%">Acompaña a Álex durante 6 meses (26 semanas). Toma buenas decisiones para mantener la enfermedad en calma. Basado en datos médicos reales.</div>
   </div>`);
 }
 function howTo(){
@@ -900,7 +900,7 @@ function howTo(){
   render(`<div class="view"><div id="box" style="max-height:none;flex:1">
     <div class="speaker">❓ CÓMO SE JUEGA</div>
     <div class="text">
-    🎯 <b>Objetivo:</b> llegar a la semana 52 con la enfermedad en <b>remisión</b> (CDAI &lt; 150) y buena calidad de vida.<br><br>
+    🎯 <b>Objetivo:</b> llegar a la semana 26 (6 meses) con la enfermedad en <b>remisión</b> (CDAI &lt; 150) y buena calidad de vida.<br><br>
     📅 Cada semana tienes <b>3 acciones (⭐)</b>. Elige bien: descansar, medicarte, ver a la familia, trabajar...<br><br>
     🍽️ Cada semana <b>eliges qué comer</b> usando la tabla de alimentos real.<br><br>
     💊 <b>Toma tu medicación</b> aunque te sientas bien (adherencia).<br><br>
@@ -937,7 +937,7 @@ function showEdu(key, next){
 function startWeek(){
   S.ap=S.apMax; S.tookMed=false; S.phase='meal';
   // fichas educativas en momentos clave
-  const triggers={13:'diet',26:'family',39:'meds'};
+  const triggers={7:'diet',14:'family',22:'meds'};
   if(triggers[S.week] && !S.eduSeen['wk'+S.week]){
     S.eduSeen['wk'+S.week]=true;
     return showEdu(triggers[S.week], ()=>afterIntro());
@@ -1455,8 +1455,42 @@ function weekTransition(kind){
       : 'Semana en remisión 🌿 (CDAI '+Math.round(S.cdai)+'). Vas por buen camino.';
   }
   S.week++;
-  if(S.week>S.maxWeeks){ return showEnding(); }
+  if(S.week>S.maxWeeks){ return showPsych(); }
   showBox(speaker, msg, [{t:'▶ SIGUIENTE SEMANA',cls:'primary',fn:'startWeek()'}]);
+}
+
+/* ---------- FINAL: el lado psicológico del paciente ---------- */
+function showPsych(){
+  S.phase='psych';
+  let personal;
+  if(S.weeksFlare >= S.maxWeeks*0.5)
+    personal='En tu partida hubo <b>muchos brotes</b>. Es muy normal que tantas recaídas generen <b>frustración, miedo o cansancio emocional</b>. Reconocerlo no es debilidad: es el primer paso para pedir apoyo.';
+  else if(S.estres>60)
+    personal='Has vivido con <b>bastante estrés</b>. Cuidar tu mente (descanso, apoyo, ayuda profesional) es tan importante como cuidar tu intestino.';
+  else
+    personal='Has mantenido un <b>buen equilibrio emocional</b>. Sigue cuidándote y apoyándote en los demás.';
+  sfx('ok');
+  render(`<div class="view">
+    <div id="box" style="max-height:none;flex:1;display:flex">
+      <div class="card" style="border-color:var(--c-purple)">
+        <div style="text-align:center;margin-bottom:8px">${charImg(80,'neutral')}</div>
+        <h2 style="color:var(--c-purple)">💜 El lado psicológico</h2>
+        <div class="text">
+        Convivir con una enfermedad crónica como el Crohn <b>no es solo físico</b>. La incertidumbre de cuándo llegará el próximo brote, las molestias y los cambios en la vida social o laboral pueden producir <span class="bad">ansiedad, frustración, tristeza o sensación de sentirse diferente</span>.<br><br>
+        Esto es <b>normal y válido</b>: tu <b>salud mental</b> importa tanto como la física.<br><br>
+        Lo que ayuda:<br>
+        • Hablar de cómo te sientes y <b>no aislarte</b>.<br>
+        • Apoyarte en tu <b>familia y amigos</b>.<br>
+        • Pedir <b>ayuda psicológica</b> si lo necesitas (no estás solo/a).<br>
+        • Ponerte metas realistas y <b>celebrar los periodos buenos</b>.<br><br>
+        ${personal}<br><br>
+        Con apoyo y tratamiento, la gran mayoría de personas con Crohn <b>lleva una vida plena</b>. 💪
+        </div>
+        <div class="src">Enfoque: Jaureguizar &amp; Espina — "Enfermedad física crónica y familia" · La salud emocional es parte del tratamiento.</div>
+      </div>
+    </div>
+    <div id="menu"><button class="btn primary wide" onclick="showEnding()">VER MI RESUMEN ▶</button></div>
+  </div>`);
 }
 
 /* ---------- FINAL ---------- */
@@ -1465,19 +1499,19 @@ function showEnding(){
   const remPct=Math.round(S.weeksRemission/S.maxWeeks*100);
   // logros
   const ach=[];
-  ach.push({ok:S.smokeFreeAllYear,t:'🚭 Todo el año sin tabaco'});
-  ach.push({ok:S.medWeeks>=42,t:'💊 Adherencia ejemplar (≥42 sem.)'});
+  ach.push({ok:S.smokeFreeAllYear,t:'🚭 Sin tabaco los 6 meses'});
+  ach.push({ok:S.medWeeks>=22,t:'💊 Adherencia ejemplar (≥22 sem.)'});
   ach.push({ok:S.goodMeals>=S.badMeals*2,t:'🥗 Maestro de la dieta'});
-  ach.push({ok:S.weeksRemission>=40,t:'🌿 Año mayormente en calma'});
+  ach.push({ok:S.weeksRemission>=20,t:'🌿 Semestre en calma'});
   ach.push({ok:S.hospital===0,t:'🏥 Sin ingresos hospitalarios'});
 
   let rank, face, color, finalMsg;
   if(remPct>=80){ rank='¡EXCELENTE!'; face='🥳'; color='var(--c-good2)';
     finalMsg='Has demostrado que <b>se puede vivir muy bien con Crohn</b>. Con buenos hábitos, adherencia y apoyo, la enfermedad se mantiene a raya.'; sfx('good'); }
   else if(remPct>=55){ rank='¡BIEN!'; face='😊'; color='var(--c-warn)';
-    finalMsg='Has llevado bien la enfermedad la mayor parte del año. Pequeños ajustes (medicación constante, menos estrés) y lo bordarás.'; }
-  else { rank='AÑO DIFÍCIL'; face='💪'; color='var(--c-pink)';
-    finalMsg='Ha sido un año con muchos brotes. Lo importante: aprender qué los dispara (saltarse la medicación, tabaco, AINEs, estrés, mala dieta) para mejorar. <b>El Crohn es crónico, pero manejable.</b>'; }
+    finalMsg='Has llevado bien la enfermedad la mayor parte del semestre. Pequeños ajustes (medicación constante, menos estrés) y lo bordarás.'; }
+  else { rank='SEMESTRE DIFÍCIL'; face='💪'; color='var(--c-pink)';
+    finalMsg='Han sido 6 meses con muchos brotes. Lo importante: aprender qué los dispara (saltarse la medicación, tabaco, AINEs, estrés, mala dieta) para mejorar. <b>El Crohn es crónico, pero manejable.</b>'; }
 
   const achHTML=ach.map(a=>`<span class="badge ${a.ok?'':'miss'}">${a.ok?'✔':'✘'} ${a.t}</span>`).join('');
   render(`<div class="view">
