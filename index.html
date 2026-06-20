@@ -119,6 +119,8 @@
   button.btn.dbtn{font-size:16px; text-align:center; padding:0; display:flex; align-items:center; justify-content:center;}
   button.btn.dbtn.u{grid-area:1/2;} button.btn.dbtn.l{grid-area:2/1;}
   button.btn.dbtn.r{grid-area:2/3;} button.btn.dbtn.d{grid-area:3/2;}
+  #maze.mz-hit{outline:3px solid #ff3b3b; outline-offset:-3px; animation:mzhit .18s linear;}
+  @keyframes mzhit{50%{filter:brightness(1.4) saturate(1.4);}}
   /* ---- text/dialog box ---- */
   #box{
     background:#15131f; border-top:4px solid var(--c-frame);
@@ -274,6 +276,7 @@ function newState(){
     phase:'title',
     eduSeen:{},
     mazeDone:{},
+    mazeCount:0,
     log:[]
   };
 }
@@ -399,6 +402,7 @@ const MP={
   F:'#e8b063', f:'#c98b46',
   w:'#bfe3ff', u:'#8fc8f0',
   D:'#5bc0d0', d:'#3a93a3',
+  V:'#a36bf0', v:'#7a45c0',
   X:'#ffffff', x:'#cccccc'
 };
 function shade(hex,f){ f=f||0.72; const n=parseInt(hex.slice(1),16); let r=(n>>16)&255,g=(n>>8)&255,b=n&255; r=Math.round(r*f);g=Math.round(g*f);b=Math.round(b*f); return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1); }
@@ -536,6 +540,19 @@ const CH={
     "..oWWWWWWo..",
     "...oooooo...",
     "............",
+    "............",
+    "............"],
+  germ:[
+    "............",
+    "...oooo.....",
+    "..oVVVVo....",
+    ".oVVVVVVo...",
+    ".oVWVVWVo...",
+    ".oVVVVVVo...",
+    ".oVvVVvVo...",
+    "..oVVVVo....",
+    "...oooo.....",
+    "..o.oo.o....",
     "............",
     "............"]
 };
@@ -795,7 +812,8 @@ const EDU={
   maze:{t:'Curar el intestino (curación mucosa)',
     body:`Uno de los grandes objetivos del tratamiento del Crohn es la <b>curación mucosa</b>: que la pared del intestino, que estaba inflamada y con úlceras, <b>se recupere y vuelva a estar sana</b>.<br><br>
     Cuando se logra, hay menos brotes, menos complicaciones y menos cirugías.<br><br>
-    🧬 En este minijuego recorres un tramo de intestino: cada casilla que pisas pasa de <span class="bad">roja (inflamada)</span> a <b>verde (sana)</b>. ¡Lleva a Álex hasta la salida ★ y cura el tramo!`,
+    🧬 En este minijuego recorres distintos <b>tramos reales del intestino</b> (duodeno, yeyuno, íleon, colon...): cada casilla que pisas pasa de <span class="bad">roja (inflamada)</span> a <b>verde (sana)</b>.<br><br>
+    ⏱️ Tienes un <b>tiempo límite</b>, y hay <b style="color:#b98cff">bacterias 🦠</b> moviéndose que debes <b>esquivar</b> (si te tocan, pierdes tiempo). ¡Llega a la salida ★ y cura el tramo!`,
     src:'Concepto real: "curación/cicatrización mucosa", objetivo terapéutico en la enfermedad de Crohn'},
   family:{t:'Familia, estrés y ánimo',
     body:`El Crohn no es sólo físico. El <b>estrés</b> y el estado de ánimo influyen en cómo te sientes y pueden favorecer los brotes.<br><br>
@@ -930,8 +948,10 @@ function afterIntro(){
   // minijuego de laberinto cada 4 semanas (a partir de la semana 4)
   if(S.week%4===0 && !S.mazeDone['w'+S.week]){
     S.mazeDone['w'+S.week]=true;
-    if(!S.eduSeen.maze) return showEdu('maze', ()=>mazePhase(mealPhase));
-    return mazePhase(mealPhase);
+    S.mazeCount++;
+    const seg=GUT_SEGMENTS[(S.mazeCount-1)%GUT_SEGMENTS.length];
+    if(!S.eduSeen.maze) return showEdu('maze', ()=>mazePhase(mealPhase, seg));
+    return mazePhase(mealPhase, seg);
   }
   mealPhase();
 }
@@ -998,6 +1018,18 @@ function eat(i){
    Recorres un tramo del intestino; cada casilla pisada se "cura".
    ==================================================================== */
 let MZ=null;
+// Tramos reales del tubo digestivo (de arriba a abajo). El Crohn afecta sobre todo al íleon terminal y al colon.
+const GUT_SEGMENTS=[
+  {name:'Duodeno', fact:'primera parte del intestino delgado, justo tras el estómago.'},
+  {name:'Yeyuno', fact:'parte media del intestino delgado, donde se absorben muchos nutrientes.'},
+  {name:'Íleon terminal', fact:'¡la zona MÁS afectada por la enfermedad de Crohn!'},
+  {name:'Ciego', fact:'inicio del intestino grueso; aquí se une el apéndice.'},
+  {name:'Colon ascendente', fact:'sube por el lado derecho del abdomen.'},
+  {name:'Colon transverso', fact:'cruza el abdomen de derecha a izquierda.'},
+  {name:'Colon descendente', fact:'baja por el lado izquierdo del abdomen.'},
+  {name:'Colon sigmoide', fact:'tramo en forma de "S" antes del recto.'},
+  {name:'Recto', fact:'tramo final del intestino, justo antes del ano.'}
+];
 function shuffle(a){ a=[...a]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; }
 function genMaze(cells){
   const W=cells*2+1, H=cells*2+1;
@@ -1013,22 +1045,39 @@ function genMaze(cells){
   })(0,0);
   return {g,W,H,start:[1,1],exit:[H-2,W-2]};
 }
-function mazePhase(onDone){
+function mazePhase(onDone, seg){
   S.phase='maze';
+  seg = seg || GUT_SEGMENTS[0];
   const m=genMaze(5);
   const pathCells=[];
   for(let r=0;r<m.H;r++) for(let c=0;c<m.W;c++) if(m.g[r][c]===0) pathCells.push([r,c]);
+  const exitKey=m.exit[0]+','+m.exit[1];
+  const used=new Set(['1,1', exitKey]);
+  // recogibles (＋)
   const pickups={};
-  shuffle(pathCells).filter(([r,c])=>!(r===1&&c===1)&&!(r===m.exit[0]&&c===m.exit[1])).slice(0,3).forEach(([r,c])=>pickups[r+','+c]=true);
-  MZ={g:m.g,W:m.W,H:m.H,pos:[1,1],exit:m.exit,visited:{'1,1':true},pickups,got:0,totalPath:pathCells.length,onDone};
+  shuffle(pathCells).filter(([r,c])=>!used.has(r+','+c)).slice(0,3).forEach(([r,c])=>{ pickups[r+','+c]=true; used.add(r+','+c); });
+  // bacterias: en casillas lejos del inicio
+  const nBact = Math.min(5, 2 + Math.floor((S.mazeCount-1)/3));
+  const bacteria=[];
+  shuffle(pathCells).filter(([r,c])=>!used.has(r+','+c) && (Math.abs(r-1)+Math.abs(c-1))>3).slice(0,nBact).forEach(([r,c])=>{ bacteria.push({r,c}); used.add(r+','+c); });
+  MZ={g:m.g,W:m.W,H:m.H,pos:[1,1],exit:m.exit,visited:{'1,1':true},pickups,bacteria,got:0,hits:0,totalPath:pathCells.length,onDone,seg,time:40,flash:0,cool:0};
   document.addEventListener('keydown',mazeKey);
   renderMaze();
+  if(window.__mzTimer) clearInterval(window.__mzTimer);
+  window.__mzTimer=setInterval(mazeTick,1000);
 }
 function mazeKey(e){
   let dr=0,dc=0; const k=e.key;
   if(k==='ArrowUp'||k==='w'||k==='W')dr=-1; else if(k==='ArrowDown'||k==='s'||k==='S')dr=1;
   else if(k==='ArrowLeft'||k==='a'||k==='A')dc=-1; else if(k==='ArrowRight'||k==='d'||k==='D')dc=1; else return;
   e.preventDefault(); mzMove(dr,dc);
+}
+function checkBacteria(){
+  if(!MZ) return;
+  if(MZ.cool>0) return;
+  if(MZ.bacteria.some(b=>b.r===MZ.pos[0]&&b.c===MZ.pos[1])){
+    MZ.time=Math.max(0,MZ.time-6); MZ.flash=2; MZ.cool=2; MZ.hits++; sfx('bad');
+  }
 }
 function mzMove(dr,dc){
   if(!MZ) return;
@@ -1037,27 +1086,58 @@ function mzMove(dr,dc){
   MZ.pos=[nr,nc]; const key=nr+','+nc;
   if(!MZ.visited[key]){ MZ.visited[key]=true; sfx('ok'); }
   if(MZ.pickups[key]){ delete MZ.pickups[key]; MZ.got++; sfx('good'); }
+  checkBacteria();
+  if(!MZ) return;
+  if(MZ.time<=0) return mazeTimeout();
   if(nr===MZ.exit[0]&&nc===MZ.exit[1]) return mazeWin();
-  renderMaze();
+  paintMaze();
 }
-function renderMaze(){
-  const healed=Object.keys(MZ.visited).length;
-  const pct=Math.round(healed/MZ.totalPath*100);
+function mazeTick(){
+  if(!MZ){ clearInterval(window.__mzTimer); return; }
+  if(MZ.cool>0) MZ.cool--;
+  // mover bacterias por el camino
+  MZ.bacteria.forEach(b=>{
+    const opts=[[1,0],[-1,0],[0,1],[0,-1],[0,0]].filter(([dr,dc])=> (dr===0&&dc===0) || (b.r+dr>=0&&b.c+dc>=0&&b.r+dr<MZ.H&&b.c+dc<MZ.W&&MZ.g[b.r+dr][b.c+dc]===0));
+    const mv=opts[Math.floor(Math.random()*opts.length)]; b.r+=mv[0]; b.c+=mv[1];
+  });
+  checkBacteria();
+  if(!MZ) return;
+  MZ.time--;
+  if(MZ.time<=0) return mazeTimeout();
+  paintMaze();
+}
+function mazeInfoHTML(){
+  const pct=Math.round(Object.keys(MZ.visited).length/MZ.totalPath*100);
+  const tcol=MZ.time<=10?'#ff5470':'#ffd24d';
+  return `<span style="color:${tcol}">⏱️ ${MZ.time}s</span> · ＋${MZ.got} · sano ${pct}%`;
+}
+function mazeCells(){
+  const bset={}; MZ.bacteria.forEach(b=>bset[b.r+','+b.c]=true);
   let grid='';
   for(let r=0;r<MZ.H;r++) for(let c=0;c<MZ.W;c++){
     const key=r+','+c; const isPath=MZ.g[r][c]===0; const isExit=r===MZ.exit[0]&&c===MZ.exit[1];
     let cls = isExit?'mz-exit':(isPath?(MZ.visited[key]?'mz-heal':'mz-sick'):'mz-wall');
     let inner = isExit?'<span class="mz-goal">★</span>':'';
     if(MZ.pickups[key]) inner='<span class="mz-pick">+</span>';
+    if(bset[key]) inner=`<img src="${SPRITES.germ}" style="width:100%;height:100%">`;
     if(r===MZ.pos[0]&&c===MZ.pos[1]) inner=`<img src="${SPRITES.alex_happy}" style="width:100%;height:100%">`;
     grid+=`<div class="mzc ${cls}">${inner}</div>`;
   }
+  return grid;
+}
+function paintMaze(){
+  const el=document.getElementById('maze'); if(!el) return;
+  el.innerHTML=mazeCells();
+  el.classList.toggle('mz-hit', MZ.flash>0); if(MZ.flash>0) MZ.flash--;
+  const info=document.getElementById('mzinfo'); if(info) info.innerHTML=mazeInfoHTML();
+}
+function renderMaze(){
   render(`<div class="view">
-    <div id="hud"><span class="wk">🧬 Curar el intestino · Semana ${S.week}</span><span class="ap" style="margin-left:auto">＋${MZ.got} · sano ${pct}%</span></div>
+    <div id="hud"><span class="wk">🧬 ${MZ.seg.name}</span><span class="ap" id="mzinfo" style="margin-left:auto">${mazeInfoHTML()}</span></div>
     <div id="stage">
       <div id="box" style="max-height:none">
-        <div class="text" style="font-size:9px">Lleva a Álex a la salida <b style="color:#d9a200">★</b>. Cada casilla que pisas <b>se cura</b> (roja→verde). Recoge los <b style="color:#62c66e">＋</b>. Usa el mando o las flechas del teclado.</div>
-        <div id="maze" style="grid-template-columns:repeat(${MZ.W},1fr)">${grid}</div>
+        <div class="text" style="font-size:9px">Curas el <b>${MZ.seg.name}</b>: ${MZ.seg.fact} Llega a la salida <b style="color:#d9a200">★</b> antes de que acabe el <b style="color:#ffd24d">⏱️</b>. Cada casilla se cura (roja→verde) y recoge los <b style="color:#62c66e">＋</b>. ¡Esquiva las <b style="color:#b98cff">bacterias</b> 🦠, te quitan tiempo!</div>
+        <div id="maze" style="grid-template-columns:repeat(${MZ.W},1fr)">${mazeCells()}</div>
       </div>
     </div>
     <div id="menu" style="flex-direction:column; align-items:center; gap:7px">
@@ -1071,16 +1151,25 @@ function renderMaze(){
     </div>
   </div>`);
 }
-function mazeEnd(){ document.removeEventListener('keydown',mazeKey); const cb=MZ?MZ.onDone:mealPhase; return cb; }
+function mazeEnd(){ document.removeEventListener('keydown',mazeKey); if(window.__mzTimer){clearInterval(window.__mzTimer); window.__mzTimer=null;} return MZ?MZ.onDone:mealPhase; }
 function mazeWin(){
-  const got=MZ.got, pct=Math.round(Object.keys(MZ.visited).length/MZ.totalPath*100);
+  const got=MZ.got, tleft=MZ.time, seg=MZ.seg, pct=Math.round(Object.keys(MZ.visited).length/MZ.totalPath*100);
   const cb=mazeEnd();
-  const bonus=12+got*4;
+  const bonus=12+got*4+Math.floor(tleft/4);
   S.cdai=clamp(S.cdai-bonus,0,450);
   S.nutricion=clamp(S.nutricion+5+got*2,0,100);
   S.energia=clamp(S.energia+5,0,100);
   MZ=null; sfx('good');
-  showBox('🧬 ¡Tramo curado!', `Recorriste el intestino y <b>curaste la mucosa</b> de este tramo (${pct}% sano, recogiste ＋${got}).<br><br>Inflamación ▼ (CDAI -${bonus}), nutrición ▲ y energía ▲. <span class="info">La curación mucosa real significa menos brotes y complicaciones.</span>`, [{t:'CONTINUAR ▶',cls:'primary',fn:'mazeContinue()'}]);
+  showBox('🧬 ¡'+seg.name+' curado!', `Llegaste a la salida con <b>${tleft}s</b> de sobra y curaste el ${pct}% del tramo (recogiste ＋${got}).<br><br>Inflamación ▼ (CDAI -${bonus}), nutrición ▲ y energía ▲. <span class="info">La curación mucosa real significa menos brotes y complicaciones.</span>`, [{t:'CONTINUAR ▶',cls:'primary',fn:'mazeContinue()'}]);
+  window.__mazeCb=cb;
+}
+function mazeTimeout(){
+  const seg=MZ.seg, pct=Math.round(Object.keys(MZ.visited).length/MZ.totalPath*100);
+  const cb=mazeEnd();
+  const bonus=Math.round(pct/12);
+  S.cdai=clamp(S.cdai-bonus,0,450);
+  MZ=null; sfx('bad');
+  showBox('⏱️ ¡Se acabó el tiempo!', `No llegaste a tiempo a la salida del ${seg.name}, pero curaste el ${pct}% del tramo (CDAI -${bonus}). <span class="info">¡Casi! Tendrás otra oportunidad más adelante.</span>`, [{t:'CONTINUAR ▶',cls:'primary',fn:'mazeContinue()'}]);
   window.__mazeCb=cb;
 }
 function mazeSkip(){
