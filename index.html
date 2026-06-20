@@ -99,6 +99,9 @@
   .psp.bob{animation:bob 1.6s infinite ease-in-out;}
   .psp.bob2{animation:bob 2.4s infinite ease-in-out;}
   .foodcard .e{min-height:46px; display:flex; align-items:center; justify-content:center;}
+  button.btn.foodbtn{display:flex; align-items:center; gap:10px; line-height:1.3;}
+  button.btn.foodbtn .fn{flex:1;}
+  button.btn.foodbtn .psp{filter:drop-shadow(1px 2px 0 #00000044);}
   /* ---- text/dialog box ---- */
   #box{
     background:#15131f; border-top:4px solid var(--c-frame);
@@ -163,16 +166,22 @@
      MÓVIL / TABLET — pantalla a altura completa y controles grandes
      ========================================================= */
   @media (max-width:640px), (pointer:coarse){
-    body{padding:0; align-items:stretch; min-height:100vh;}
+    body{display:block; padding:0; min-height:100vh;}
     #console{width:100%;}
     #screen{
       aspect-ratio:auto;
-      height:calc(100vh - 58px);
-      height:calc(100dvh - 58px);
-      min-height:0;
+      height:auto;
+      min-height:calc(100vh - 58px);
+      min-height:calc(100dvh - 58px);
+      overflow:visible;
       border-width:4px; border-radius:0;
       box-shadow:none;
     }
+    /* el contenido fluye en vertical y la PÁGINA scrollea si no cabe (nada se recorta) */
+    .view{position:static; min-height:calc(100vh - 66px); min-height:calc(100dvh - 66px);}
+    #stage{flex:0 0 auto;}
+    #menu{flex-shrink:0;}
+    #box{max-height:none;}
     /* HUD y barras un poco más legibles: una sola columna, sin cortar texto */
     #hud{font-size:9px; padding:9px 10px;}
     #bars{padding:9px 10px; gap:7px; grid-template-columns:1fr;}
@@ -900,29 +909,25 @@ function mealPhase(){
   S.phase='meal';
   // en brote, más probabilidad de ofrecer alimentos "malos" como tentación
   const options=pick(FOODS,3);
-  const cards=options.map((f,i)=>`
-    <div class="foodcard" onclick="eat(${i})">
-      <div class="e">${foodImg(f,44)}</div><div class="n">${f.n}</div>
-    </div>`).join('');
   window.__meal=options;
-  const ph=phaseInfo();
   const tip = S.flare
-    ? '<span class="bad">⚠️ Estás en brote: elige alimentos suaves y evita fritos, fibra dura, picante y alcohol.</span>'
+    ? '<span class="bad">⚠️ Estás en brote: elige alimentos suaves; evita fritos, fibra dura, picante y alcohol.</span>'
     : 'Elige bien: en remisión puedes comer variado, pero lo que sabes que te sienta mal, mejor evitarlo.';
+  const btns=options.map((f,i)=>`<button class="btn k foodbtn" onclick="eat(${i})">${foodImg(f,32)}<span class="fn">${f.n}</span></button>`).join('');
   render(`<div class="view">
     ${hudHTML()}
     <div id="stage">
       <div id="scene" class="${S.flare?'scene-flare':season().cls}">
-        ${psp(decoSprite(),42,'bob2')}
-        ${charImg(78)}
-        ${psp('plate',42,'bob2')}
+        ${psp(decoSprite(),40,'bob2')}
+        ${charImg(72)}
+        ${psp('plate',40,'bob2')}
       </div>
       <div id="box">
-        <div class="speaker">🍽️ MENÚ DE LA SEMANA</div>
-        <div class="text">${tip}<br><br>¿Qué eliges comer hoy?</div>
-        <div class="foods">${cards}</div>
+        <div class="speaker">🍽️ MENÚ DE LA SEMANA · ¿Qué comes?</div>
+        <div class="text">${tip}</div>
       </div>
     </div>
+    <div id="menu">${btns}</div>
   </div>`);
 }
 function eat(i){
@@ -1048,104 +1053,104 @@ const EVENTS=[
   {id:'ibu', cond:()=>true, speaker:'🤕 Dolor de cabeza',
    text:'Te duele la cabeza. En casa tienes ibuprofeno (un AINE) y paracetamol. ¿Qué tomas?',
    opts:[
-     {t:'💊 Ibuprofeno',fn:'ev("ibu",0)'},
-     {t:'💊 Paracetamol',fn:'ev("ibu",1)'}],
+     {t:'💊 Ibuprofeno',fn:"ev('ibu',0)"},
+     {t:'💊 Paracetamol',fn:"ev('ibu',1)"}],
    res:[
      {m:'<span class="bad">Los AINEs como el ibuprofeno pueden empeorar el Crohn.</span> Inflamación ▲▲.',fx:()=>{S.cdai=clamp(S.cdai+13,0,450);},s:'bad'},
      {m:'<b>Buena elección.</b> El paracetamol es más seguro para el dolor en el Crohn.',fx:()=>{},s:'good'}]},
   {id:'smoke', cond:()=>true, speaker:'🚬 Una fiesta',
    text:'En una fiesta te ofrecen un cigarro. "Total, por uno...". ¿Qué haces?',
    opts:[
-     {t:'🚬 Aceptar',fn:'ev("smoke",0)'},
-     {t:'🙅 Rechazar',fn:'ev("smoke",1)'}],
+     {t:'🚬 Aceptar',fn:"ev('smoke',0)"},
+     {t:'🙅 Rechazar',fn:"ev('smoke',1)"}],
    res:[
      {m:'<span class="bad">El tabaco perjudica claramente la evolución del Crohn</span> (más brotes y complicaciones). Inflamación ▲.',fx:()=>{S.cdai=clamp(S.cdai+11,0,450); S.smoked=true; S.smokeFreeAllYear=false;},s:'bad'},
      {m:'<b>¡Muy bien!</b> Mantenerte sin tabaco es de lo mejor que puedes hacer por tu intestino.',fx:()=>{S.estres=clamp(S.estres-3,0,100);},s:'good'}]},
   {id:'stress', cond:()=>true, speaker:'😣 Semana intensa',
    text:'Se acumula el trabajo y los recados. Puedes quedarte hasta tarde para terminarlo todo o parar y respirar.',
    opts:[
-     {t:'💼 Forzar la máquina (+20€)',fn:'ev("stress",0)'},
-     {t:'🧘 Parar y descansar',fn:'ev("stress",1)'}],
+     {t:'💼 Forzar la máquina (+20€)',fn:"ev('stress',0)"},
+     {t:'🧘 Parar y descansar',fn:"ev('stress',1)"}],
    res:[
      {m:'Terminas todo (+20€) pero acabas agotado. Estrés ▲▲. El estrés sostenido favorece los brotes.',fx:()=>{S.dinero+=20; S.estres=clamp(S.estres+16,0,100); S.energia=clamp(S.energia-8,0,100);},s:'bad'},
      {m:'Priorizas tu salud. Estrés ▼, energía ▲. A veces parar también es ganar.',fx:()=>{S.estres=clamp(S.estres-12,0,100); S.energia=clamp(S.energia+6,0,100);},s:'good'}]},
   {id:'stopmed', cond:()=>!S.flare, speaker:'😌 Te encuentras genial',
    text:'Llevas semanas bien. Piensas: "¿y si dejo la medicación, que ya no la necesito?"',
    opts:[
-     {t:'🛑 Dejar la medicación',fn:'ev("stopmed",0)'},
-     {t:'✅ Seguir tomándola',fn:'ev("stopmed",1)'}],
+     {t:'🛑 Dejar la medicación',fn:"ev('stopmed',0)"},
+     {t:'✅ Seguir tomándola',fn:"ev('stopmed',1)"}],
    res:[
      {m:'<span class="bad">Error frecuente.</span> Abandonar el tratamiento en remisión es la causa nº1 de recaída. Riesgo de brote ▲▲.',fx:()=>{S.cdai=clamp(S.cdai+18,0,450); S.missedStreak+=2;},s:'bad'},
      {m:'<b>Decisión acertada.</b> La medicación de mantenimiento es la que conserva la remisión. ¡Adherencia!',fx:()=>{S.cdai=clamp(S.cdai-4,0,450);},s:'good'}]},
   {id:'infect', cond:()=>true, speaker:'🤧 Pillas un virus',
    text:'Te ha entrado un resfriado fuerte. Tu cuerpo está más débil.',
    opts:[
-     {t:'😴 Reposar y cuidarte',fn:'ev("infect",0)'},
-     {t:'💪 Hacer vida normal',fn:'ev("infect",1)'}],
+     {t:'😴 Reposar y cuidarte',fn:"ev('infect',0)"},
+     {t:'💪 Hacer vida normal',fn:"ev('infect',1)"}],
    res:[
      {m:'Reposas y te recuperas bien. Energía baja un poco pero evitas males mayores.',fx:()=>{S.energia=clamp(S.energia-6,0,100);},s:'ok'},
      {m:'Forzar con una infección puede desencadenar actividad de la enfermedad. Inflamación ▲, energía ▼.',fx:()=>{S.cdai=clamp(S.cdai+10,0,450); S.energia=clamp(S.energia-12,0,100);},s:'bad'}]},
   {id:'feast', cond:()=>true, speaker:'🎉 Comida familiar',
    text:'Gran comilona en familia: fritos, embutidos y postres con nata. ¿Cómo lo gestionas?',
    opts:[
-     {t:'🍰 Comer de todo sin freno',fn:'ev("feast",0)'},
-     {t:'🥗 Disfrutar con moderación',fn:'ev("feast",1)'}],
+     {t:'🍰 Comer de todo sin freno',fn:"ev('feast',0)"},
+     {t:'🥗 Disfrutar con moderación',fn:"ev('feast',1)"}],
    res:[
      {m:'Comida copiosa y grasa de golpe: justo lo que peor sienta. Inflamación ▲▲. Mejor 5–6 tomas pequeñas.',fx:()=>{S.cdai=clamp(S.cdai+12,0,450); S.estres=clamp(S.estres-4,0,100);},s:'bad'},
      {m:'Disfrutas la reunión eligiendo lo que toleras y en poca cantidad. Estrés ▼ y sin sustos.',fx:()=>{S.estres=clamp(S.estres-8,0,100); S.nutricion=clamp(S.nutricion+3,0,100);},s:'good'}]},
   {id:'alcohol', cond:()=>true, speaker:'🥂 Una celebración',
    text:'Hay un brindis con bebidas alcohólicas. ¿Te animas?',
    opts:[
-     {t:'🍷 Beber alcohol',fn:'ev("alcohol",0)'},
-     {t:'💧 Brindar con agua/zumo',fn:'ev("alcohol",1)'}],
+     {t:'🍷 Beber alcohol',fn:"ev('alcohol',0)"},
+     {t:'💧 Brindar con agua/zumo',fn:"ev('alcohol',1)"}],
    res:[
      {m:'El alcohol irrita el intestino y suele sentar mal en el Crohn. Inflamación ▲.',fx:()=>{S.cdai=clamp(S.cdai+9,0,450); S.energia=clamp(S.energia-4,0,100);},s:'bad'},
      {m:'Brindas igual y cuidas tu intestino. Sin sustos. 🥤',fx:()=>{S.estres=clamp(S.estres-4,0,100);},s:'good'}]},
   {id:'forgotmed', cond:()=>true, speaker:'📦 Sales de viaje',
    text:'Te vas unos días fuera. ¿Preparas y llevas tu medicación?',
    opts:[
-     {t:'🧳 Prepararla con tiempo',fn:'ev("forgotmed",0)'},
-     {t:'🤷 Ya la compraré allí',fn:'ev("forgotmed",1)'}],
+     {t:'🧳 Prepararla con tiempo',fn:"ev('forgotmed',0)"},
+     {t:'🤷 Ya la compraré allí',fn:"ev('forgotmed',1)"}],
    res:[
      {m:'<b>Bien planificado.</b> Llevar la medicación asegura no romper la pauta. Adherencia ✔.',fx:()=>{S.cdai=clamp(S.cdai-3,0,450);},s:'good'},
      {m:'Te quedas sin medicación varios días: la adherencia se rompe y sube el riesgo de brote. Inflamación ▲▲.',fx:()=>{S.cdai=clamp(S.cdai+14,0,450); S.missedStreak++;},s:'bad'}]},
   {id:'sleep', cond:()=>true, speaker:'🌙 Maratón de series',
    text:'Te apetece trasnochar viendo series varias noches seguidas.',
    opts:[
-     {t:'📺 Trasnochar',fn:'ev("sleep",0)'},
-     {t:'😴 Dormir bien',fn:'ev("sleep",1)'}],
+     {t:'📺 Trasnochar',fn:"ev('sleep',0)"},
+     {t:'😴 Dormir bien',fn:"ev('sleep',1)"}],
    res:[
      {m:'La falta de sueño aumenta el cansancio y el estrés, que pueden favorecer un brote. Energía ▼, estrés ▲.',fx:()=>{S.energia=clamp(S.energia-12,0,100); S.estres=clamp(S.estres+10,0,100);},s:'bad'},
      {m:'Dormir bien repara el cuerpo y baja el estrés. Energía ▲, estrés ▼.',fx:()=>{S.energia=clamp(S.energia+10,0,100); S.estres=clamp(S.estres-8,0,100);},s:'good'}]},
   {id:'joint', cond:()=>true, speaker:'🦴 Te duelen las articulaciones',
    text:'Notas dolor e hinchazón en una rodilla. El Crohn puede dar molestias fuera del intestino (articulaciones, piel, ojos).',
    opts:[
-     {t:'🏥 Comentarlo al médico',fn:'ev("joint",0)'},
-     {t:'😶 Ignorarlo',fn:'ev("joint",1)'}],
+     {t:'🏥 Comentarlo al médico',fn:"ev('joint',0)"},
+     {t:'😶 Ignorarlo',fn:"ev('joint',1)"}],
    res:[
      {m:'<b>Bien hecho.</b> Las manifestaciones extraintestinales conviene comentarlas: se pueden tratar. Estrés ▼.',fx:()=>{S.estres=clamp(S.estres-5,0,100);},s:'good'},
      {m:'Ignorarlo hace que sigas incómodo y preocupado. Estrés ▲, energía ▼.',fx:()=>{S.estres=clamp(S.estres+6,0,100); S.energia=clamp(S.energia-5,0,100);},s:'bad'}]},
   {id:'support', cond:()=>true, speaker:'💬 Tu familia te pregunta',
    text:'Un familiar nota que estás apagado y te pregunta cómo llevas la enfermedad.',
    opts:[
-     {t:'❤️ Compartir cómo te sientes',fn:'ev("support",0)'},
-     {t:'🚪 "Estoy bien" y aislarte',fn:'ev("support",1)'}],
+     {t:'❤️ Compartir cómo te sientes',fn:"ev('support',0)"},
+     {t:'🚪 "Estoy bien" y aislarte',fn:"ev('support',1)"}],
    res:[
      {m:'Compartir alivia mucho. El apoyo familiar es clave para sobrellevar una enfermedad crónica. Estrés ▼▼.',fx:()=>{S.estres=clamp(S.estres-14,0,100); S.energia=clamp(S.energia+5,0,100);},s:'good'},
      {m:'Aislarte hace la carga más pesada y solitaria. Estrés ▲.',fx:()=>{S.estres=clamp(S.estres+9,0,100);},s:'bad'}]},
   {id:'faddiet', cond:()=>true, speaker:'📱 Dieta milagro de internet',
    text:'Ves una "dieta milagro" que promete curar el Crohn quitando muchísimos alimentos. ¿La sigues?',
    opts:[
-     {t:'🥦 Seguirla a rajatabla',fn:'ev("faddiet",0)'},
-     {t:'🧑‍⚕️ Consultar antes',fn:'ev("faddiet",1)'}],
+     {t:'🥦 Seguirla a rajatabla',fn:"ev('faddiet',0)"},
+     {t:'🧑‍⚕️ Consultar antes',fn:"ev('faddiet',1)"}],
    res:[
      {m:'Las dietas muy restrictivas sin control pueden dejarte sin nutrientes. La dieta debe ser <b>individualizada</b>. Nutrición ▼.',fx:()=>{S.nutricion=clamp(S.nutricion-12,0,100); S.energia=clamp(S.energia-4,0,100);},s:'bad'},
      {m:'Bien: no hay dieta milagro. Lo correcto es adaptarla a tu tolerancia con tu equipo médico. Nutrición ▲.',fx:()=>{S.nutricion=clamp(S.nutricion+5,0,100);},s:'good'}]},
   {id:'water', cond:()=>S.flare, speaker:'💧 Diarrea y sed',
    text:'Con el brote vas mucho al baño y te notas deshidratado.',
    opts:[
-     {t:'🚰 Beber agua a sorbos',fn:'ev("water",0)'},
-     {t:'🥤 Beber refrescos con gas',fn:'ev("water",1)'}],
+     {t:'🚰 Beber agua a sorbos',fn:"ev('water',0)"},
+     {t:'🥤 Beber refrescos con gas',fn:"ev('water',1)"}],
    res:[
      {m:'Hidratarte bien es importante en los brotes con diarrea. Energía ▲.',fx:()=>{S.energia=clamp(S.energia+8,0,100); S.cdai=clamp(S.cdai-3,0,450);},s:'good'},
      {m:'Los refrescos con gas y azúcar pueden irritar más. Mejor agua. Inflamación ▲.',fx:()=>{S.cdai=clamp(S.cdai+7,0,450);},s:'bad'}]}
